@@ -12,7 +12,8 @@ Compared with the previous version of [GF](https://github.com/YipuZhao/GF_ORB_SL
  - GPU accelerated FAST detection (uncomment Macro **CUDA_ACC_FAST** in ORBextractor.h to enable it);
  - sped-up lazy stereo matching (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in Frame.h to enable it);
  - to be included ~~map saving & loading modules~~
- - to be included ~~catkin package~~
+ - to be included ~~map hash feature~~
+ - to be included ~~visual inertial fusion~~
 
 ## Build & Run
 
