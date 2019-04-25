@@ -11,7 +11,8 @@ Compared with the previous version of (GF)[https://github.com/YipuZhao/GF_ORB_SL
  - this repo is based on ORB-SLAM2, which supports monocular, stereo and rgb-d visual input;
  - GPU accelerated FAST detection (uncomment Macro **CUDA_ACC_FAST** in ORBextractor.h to enable it);
  - sped-up lazy stereo matching (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in Frame.h to enable it);
- - ~~map saving & loading modules~~
+ - to be included ~~map saving & loading modules~~
+ - to be included ~~catkin package~~
 
 ## Build & Run
 
