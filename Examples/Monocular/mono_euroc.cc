@@ -35,11 +35,17 @@ void LoadImages(const string &strImagePath, const string &strPathTimes,
 
 int main(int argc, char **argv)
 {
-    if(argc != 5)
+    if(argc != 8)
     {
-        cerr << endl << "Usage: ./mono_tum path_to_vocabulary path_to_settings path_to_image_folder path_to_times_file" << endl;
+        cerr << endl << "Usage: ./mono_euroc path_to_vocabulary path_to_settings path_to_image_folder path_to_times_file "
+             << "budget_per_frame do_viz path_to_traj" << endl;
         return 1;
     }
+
+    bool do_viz;
+    stringstream s1(argv[6]);
+    s1 >> boolalpha >> do_viz;
+
 
     // Retrieve paths to images
     vector<string> vstrImageFilenames;
@@ -55,7 +61,14 @@ int main(int argc, char **argv)
     }
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true);
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,do_viz);
+
+    SLAM.SetBudgetPerFrame(std::atoi(argv[5]));
+
+    std::string fNameRealTimeTrack = std::string(argv[7]) + "_AllFrameTrajectory.txt";
+    std::cout << std::endl << "Saving AllFrame Trajectory to AllFrameTrajectory.txt" << std::endl;
+    SLAM.SetRealTimeFileStream(fNameRealTimeTrack);
+
 
     // Vector for tracking time statistics
     vector<float> vTimesTrack;
@@ -110,22 +123,29 @@ int main(int argc, char **argv)
             usleep((T-ttrack)*1e6);
     }
 
-    // Stop all threads
-    SLAM.Shutdown();
-
-    // Tracking time statistics
-    sort(vTimesTrack.begin(),vTimesTrack.end());
-    float totaltime = 0;
-    for(int ni=0; ni<nImages; ni++)
-    {
-        totaltime+=vTimesTrack[ni];
-    }
-    cout << "-------" << endl << endl;
-    cout << "median tracking time: " << vTimesTrack[nImages/2] << endl;
-    cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
-    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+    SLAM.SaveKeyFrameTrajectoryTUM( std::string(argv[7]) + "_KeyFrameTrajectory.txt" );
+    SLAM.SaveTrackingLog( std::string(argv[7]) + "_Log.txt" );
+
+    std::cout << "Finished saving!" << std::endl;
+
+//    // Stop all threads
+//    SLAM.Shutdown();
+
+//    // Tracking time statistics
+//    sort(vTimesTrack.begin(),vTimesTrack.end());
+//    float totaltime = 0;
+//    for(int ni=0; ni<nImages; ni++)
+//    {
+//        totaltime+=vTimesTrack[ni];
+//    }
+//    cout << "-------" << endl << endl;
+//    cout << "median tracking time: " << vTimesTrack[nImages/2] << endl;
+//    cout << "mean tracking time: " << totaltime/nImages << endl;
+
+    // Save camera trajectory
+    // SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
 
     return 0;
 }

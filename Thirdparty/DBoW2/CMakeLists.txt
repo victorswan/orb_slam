@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 2.8)
 project(DBoW2)
 
+IF(NOT CMAKE_BUILD_TYPE)
+  SET(CMAKE_BUILD_TYPE Release)
+ENDIF()
+
+MESSAGE(STATUS "BUILD TYPE:" ${CMAKE_BUILD_TYPE})
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall  -O3 -march=native ")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall  -O3 -march=native")
 
@@ -24,13 +30,17 @@ set(SRCS_DUTILS
   DUtils/Random.cpp
   DUtils/Timestamp.cpp)
 
-find_package(OpenCV 3.0 QUIET)
-if(NOT OpenCV_FOUND)
-   find_package(OpenCV 2.4.3 QUIET)
-   if(NOT OpenCV_FOUND)
-      message(FATAL_ERROR "OpenCV > 2.4.3 not found.")
-   endif()
-endif()
+# customize opencv dir
+ if ($ENV{ROS_DISTRO} STREQUAL "indigo")
+     set( OpenCV_DIR /opt/opencv2/share/OpenCV )
+     find_package(OpenCV 2.4.13 REQUIRED core ocl)
+ elseif ($ENV{ROS_DISTRO} STREQUAL "kinetic")
+     # set( OpenCV_DIR /opt/opencv-3.4.1/share/OpenCV )
+     set( OpenCV_DIR /opt/opencv3/share/OpenCV )
+     find_package(OpenCV 3.4.0 REQUIRED)
+ endif()
+# set( OpenCV_DIR /opt/opencv3/share/OpenCV )
+# find_package(OpenCV 3.4.0 REQUIRED)
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 

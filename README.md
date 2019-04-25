@@ -1,3 +1,58 @@
+# Good Feature Matching Version of ORB-SLAM2
+
+Good feature matching is an enhancement module that is designed for feature-based BA SLAM, such as ORB-SLAM2.  The main advantage of good feature matching, as opposed to the conventional batch feature matching, is the better trade-off of performance-efficiency.  
+
+<figure>
+  <img src="https://github.com/YipuZhao/GF_ORB_SLAM/blob/master/batch_script/RMSE_vs_Latency_EuRoC.png" alt="EuRoC" style="width:100%">
+  <figcaption>Performance vs. latency evaluation on EuRoC monocular sequences (left-cam only)</figcaption>
+</figure>
+
+## Build & Run
+
+This repo is an integration of good feature matching to ORB-SLAM2 (which supports monocular, stereo and rgb-d visual input).  When tested on multiple public benchmarks, GF-ORB-SLAM yields the same level of pose tracking latency, while preserving the accuracy & robustness of ORB-SLAM baseline.
+
+To build GF-ORB-SLAM2, first clone the repo to your ros workspace
+
+	git clone git@github.com:YipuZhao/GF_ORB_SLAM2.git
+
+Then follow the instructions of ORB-SLAM to prepare the dependencies of ORB-SLAM: eigen, cholmod, gl/glew.  
+On top of that, build additional dependencies for good feature by calling
+
+	./build_dep.sh
+
+The last step is to build the GF-ORB-SLAM2 itself
+
+	./build.sh
+
+To run GF-ORB-SLAM2, please refer to some example batch evaluation scripts at folder 
+
+	batch_script
+
+Some example configurations for public benchmarks are available by cloning the following repo and place it at the same ros workspace as GF-ORB-SLAM2
+
+	git clone git@github.com:YipuZhao/ORB_Data.git
+
+## Reference(s)
+
+If you use GF-ORB-SLAM2 in an academic work, please cite the following papers:
+	
+	@article{zhao2019good,
+	  title={Good Feature Matching: Towards Accurate, Robust VO/VSLAM with Low Latency},
+	  author={Zhao, Yipu and Vela, Patricio A.},
+	  journal={submitted to IEEE Transactions on Robotics},
+	  year={2019}
+	}
+
+	@inproceedings{zhao2018good,
+	  title={Good Feature Selection for Least Squares Pose Optimization in VO/VSLAM},
+	  author={Zhao, Yipu and Vela, Patricio A},
+	  booktitle={2018 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+	  pages={1183--1189},
+	  year={2018},
+	  organization={IEEE}
+	}
+
+---
 # ORB-SLAM2
 **Authors:** [Raul Mur-Artal](http://webdiis.unizar.es/~raulmur/), [Juan D. Tardos](http://webdiis.unizar.es/~jdtardos/), [J. M. M. Montiel](http://webdiis.unizar.es/~josemari/) and [Dorian Galvez-Lopez](http://doriangalvez.com/) ([DBoW2](https://github.com/dorian3d/DBoW2))
 

@@ -18,6 +18,8 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <unistd.h>
+
 #include "LoopClosing.h"
 
 #include "Sim3Solver.h"
@@ -41,6 +43,13 @@ LoopClosing::LoopClosing(Map *pMap, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, 
     mbStopGBA(false), mpThreadGBA(NULL), mbFixScale(bFixScale), mnFullBAIdx(0)
 {
     mnCovisibilityConsistencyTh = 3;
+
+#ifdef DISABLE_LOOP_CLOSURE
+    std::cout << "Main: loop closure disabled!" << std::endl;
+#else
+    std::cout << "Main: loop closure enabled!" << std::endl;
+#endif
+
 }
 
 void LoopClosing::SetTracker(Tracking *pTracker)
@@ -60,6 +69,11 @@ void LoopClosing::Run()
 
     while(1)
     {
+
+#ifdef DISABLE_LOOP_CLOSURE
+        // do nothing
+
+#else
         // Check if there are keyframes in the queue
         if(CheckNewKeyFrames())
         {
@@ -74,7 +88,9 @@ void LoopClosing::Run()
                    CorrectLoop();
                }
             }
-        }       
+        }
+
+#endif       
 
         ResetIfRequested();
 

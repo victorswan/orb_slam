@@ -18,27 +18,126 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #ifndef TRACKING_H
 #define TRACKING_H
 
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
 
-#include"Viewer.h"
-#include"FrameDrawer.h"
-#include"Map.h"
-#include"LocalMapping.h"
-#include"LoopClosing.h"
-#include"Frame.h"
+#include "Viewer.h"
+#include "FrameDrawer.h"
+#include "Map.h"
+#include "LocalMapping.h"
+#include "LoopClosing.h"
+#include "Frame.h"
 #include "ORBVocabulary.h"
-#include"KeyFrameDatabase.h"
-#include"ORBextractor.h"
+#include "KeyFrameDatabase.h"
+#include "ORBextractor.h"
 #include "Initializer.h"
 #include "MapDrawer.h"
 #include "System.h"
 
+#include "Observability.h"
+
+#include <set>
+#include <utility>
+#include <algorithm>
+
+#include <Eigen/Dense>
+using namespace Eigen;
+
+#include <opencv2/core/eigen.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/features2d/features2d.hpp>
 #include <mutex>
+
+
+//#define SIMU_MOTION_BLUR
+//#define TIMECOST_VERBOSE
+//#define LMKNUM_VERBOSE
+
+
+/* --- options of baseline methods --- */
+//#define ORB_SLAM_BASELINE
+//#define DISABLE_RELOC
+
+/* --- options of non-necessary viz codes --- */
+// when running on long-term large-scale dataset, this will save us a lot of time!
+#define DISABLE_MAP_VIZ
+
+/* --- options of key-frame insert condition --- */
+//#define SPARSE_KEYFRAME_COND
+
+/* --- options to priortize feature matching wrt local map --- */
+#ifndef ORB_SLAM_BASELINE
+
+    /* --- options of additional search after pose estimation --- */
+    #define DELAYED_MAP_MATCHING
+
+    /* --- options to reduce the size of local map with good ones only --- */
+    // TODO add map hash macros here
+
+    // #define RANDOM_FEATURE_MAP_MATCHING
+    // #define LONGLIVE_FEATURE_MAP_MATCHING
+
+    #define GOOD_FEATURE_MAP_MATCHING
+    // include frame-by-frame matchings as prior term in good matching
+    // #define FRAME_MATCHING_INFO_PRIOR
+    // pre-compute Jacobian for next frame at the end of tracking
+    // TODO disable it when using map hash; check the latency vs. performance
+    #define PRECOMPUTE_WITH_MOTION_MODEL
+
+    #define USE_INFO_MATRIX
+    //#define USE_HYBRID_MATRIX
+    //#define USE_OBSERVABILITY_MATRIX
+
+    // limit the budget of computing matrices of existing matches at current frame to 2ms
+    #define MATRIX_BUDGET_REALTIME  0.002 // 0.1 // 
+    // limit the budget of predicting matrices at next frame to 2ms
+    #define MATRIX_BUDGET_PREDICT   0.002
+
+    // For low-power devices with 2-cores, disable multi-thread matrix building
+    #define USE_MULTI_THREAD        true // false //
+
+#endif
+
+/* --- options to fair comparison wrt other VO pipelines --- */
+// time to init tracking with full feature set
+#define TIME_INIT_TRACKING      5 // 10 //
+
+#define THRES_INIT_MPT_NUM          100 // 50
+#define SRH_WINDOW_SIZE_INIT        100
+
+#define MAX_FRAME_LOSS_DURATION     5
+
+/* --- options of feature subset selection methods --- */
+//#define RANDOM_FAIR_COMPARISON
+//#define BUCKETING_FAIR_COMPARISON
+#define BUCKET_WIDTH                50
+#define BUCKET_HEIGHT               50
+//#define LONGEST_TRACK_FAIR_COMPARISON
+//#define QUALITY_FAIR_COMPARISON
+//#define GOOD_FEATURE_FAIR_COMPARISON
+//#define RANDOM_ENHANCEMENT
+//#define QUALITY_ENHANCEMENT
+
+//#define WITH_IMU_PREINTEGRATION
+//#define MIN_NUM_MATCHES           30 // 50
+//#define MIN_NUM_GOOD_FEATURES     40 // For KITTI
+//#define MIN_NUM_GOOD_FEATURES     30 // For TUM
+//#define MIN_NUM_GOOD_FEATURES       20 // 30 // 50 // 80 // (with 80 the performance of GF is closed to ALL) // 100 // For EuRoC
+// 40 is used when insert GF at trackMotionModel
+
+/* --- options to good feature selection; discarded since good feature 2.0 --- */
+//#define ENABLE_EXPLICIT_OUTLIER_REJ
+//#define RANSAC_POOL_FOR_SUBSET
+//#define RANSAC_ITER_NUMBER      150 // 100 // 50 //
+
+/* --- options of candidate pooling methods; discarded since good feature 2.0 --- */
+//#define QUALITY_POOL_FOR_SUBSET
+//#define QUALITY_POOL_SCALE         2 // 1.25 // 2.5 // 1.0 // 1.5 // 1.75 //
+//#define QUALITY_POOL_PERCENTILE     0.75 // 0.5 // 0.3 // 0.85 //
+//#define QUALITY_POOL_MAXSIZE        250
 
 namespace ORB_SLAM2
 {
@@ -57,6 +156,13 @@ public:
     Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Map* pMap,
              KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor);
 
+    // for test only
+    Tracking(const cv::Mat K, const cv::Mat DistCoef) {
+        K.copyTo(mK);
+        DistCoef.copyTo(mDistCoef);
+    }
+
+
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
     cv::Mat GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp);
     cv::Mat GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp);
@@ -74,6 +180,13 @@ public:
     // Use this function if you have deactivated local mapping and you only want to localize the camera.
     void InformOnlyTracking(const bool &flag);
 
+
+    ~Tracking();
+
+    // init file stream for writing real time tracking result
+    void SetRealTimeFileStream(string fNameRealTimeTrack);
+
+    void updateORBExtractor();
 
 public:
 
@@ -95,6 +208,38 @@ public:
     // Current Frame
     Frame mCurrentFrame;
     cv::Mat mImGray;
+
+    arma::mat mCurrentInfoMat;
+    int mnInitStereo;
+
+    // Observability computation
+    Observability * mObsHandler;
+
+    size_t num_good_constr_predef;
+    //    double ratio_good_inlier_predef;
+    //    size_t num_good_feature_found;
+
+
+    //    int mToMatchMeasurement;
+    //    int mMatchedLocalMapPoint;
+
+    //
+    bool first_hit_tracking;
+    double time_frame_init;
+    double camera_fps;
+
+    //    vector<LmkSelectionInfo> obs_thres_arr;
+    //    vector<FramePose> mFramePoseSeq;
+    //    vector<std::pair<double, int> > mFrameInlierSeq;
+
+    // Time log
+    vector<TimeLog> mFrameTimeLog;
+    TimeLog logCurrentFrame;
+
+    //
+    void BucketingMatches(const Frame *pFrame, vector<GoodPoint> & mpBucketed);
+    void LongLivedMatches(const Frame *pFrame, vector<GoodPoint> & mpLongLived);
+    void RanSACMatches(const Frame *pFrame, vector<GoodPoint> & mpRanSAC);
 
     // Initialization Variables (Monocular)
     std::vector<int> mvIniLastMatches;
@@ -139,10 +284,19 @@ protected:
     void UpdateLocalKeyFrames();
 
     bool TrackLocalMap();
-    void SearchLocalPoints();
+
+    int SearchLocalPoints();
+    void SearchAdditionalMatchesInFrame(const double time_for_search, Frame & F);
+
+    void PredictJacobianNextFrame(const double time_for_predict, const size_t pred_horizon);
 
     bool NeedNewKeyFrame();
+    //
+    bool NeedNewKeyFrame_Experimental();
     void CreateNewKeyFrame();
+
+
+    void PlotFrameWithPointMatches();
 
     // In case of performing only localization, this flag is true when there are no matches to
     // points in the map. Still tracking will continue if there are enough matches with temporal points.
@@ -183,8 +337,14 @@ protected:
 
     //Calibration matrix
     cv::Mat mK;
-    cv::Mat mDistCoef;
+    cv::Mat mK_ori, mDistCoef, mR, mP;
     float mbf;
+    //
+    // for right camera undistortion
+    cv::Mat mK_right, mDistCoef_right, mR_right, mP_right;
+
+    //
+    cv::Mat mMap1_l, mMap2_l, mMap1_r, mMap2_r;
 
     //New KeyFrame rules (according to fps)
     int mMinFrames;
@@ -194,6 +354,11 @@ protected:
     // Points seen as close by the stereo/RGBD sensor are considered reliable
     // and inserted from just one frame. Far points requiere a match in two keyframes.
     float mThDepth;
+
+    // frame counter after initialization
+    size_t mFrameAfterInital;
+
+    size_t mbTrackLossAlert;
 
     // For RGB-D inputs only. For some datasets (e.g. TUM) the depthmap values are scaled.
     float mDepthMapFactor;
@@ -214,6 +379,12 @@ protected:
     bool mbRGB;
 
     list<MapPoint*> mlpTemporalPoints;
+
+    //
+    //    int budget_matching_in_track = 150; // 60; // 100; //
+
+    std::ofstream f_realTimeTrack;
+
 };
 
 } //namespace ORB_SLAM

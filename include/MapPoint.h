@@ -25,6 +25,9 @@
 #include"Frame.h"
 #include"Map.h"
 
+#define ARMA_NO_DEBUG
+#include "armadillo"
+
 #include<opencv2/core/core.hpp>
 #include<mutex>
 
@@ -41,6 +44,9 @@ class MapPoint
 public:
     MapPoint(const cv::Mat &Pos, KeyFrame* pRefKF, Map* pMap);
     MapPoint(const cv::Mat &Pos,  Map* pMap, Frame* pFrame, const int &idxF);
+
+    // for unit test only; not used in actual application
+    MapPoint() {};
 
     void SetWorldPos(const cv::Mat &Pos);
     cv::Mat GetWorldPos();
@@ -109,6 +115,27 @@ public:
     cv::Mat mPosGBA;
     long unsigned int mnBAGlobalForKF;
 
+    // XXX: Changed from protected to public!
+    // Tracking counters
+    int mnVisible;
+    int mnFound;
+
+    std::vector<size_t> mvMatchCandidates;
+
+    // Observability
+    arma::mat H_meas;
+    arma::mat H_proj;
+    arma::mat ObsMat;
+    arma::vec ObsVector;
+    double ObsScore;
+    int ObsRank;
+    //
+    float u_proj, v_proj;
+    //
+    long unsigned int matchedAtFrameId;
+    long unsigned int updateAtFrameId;
+    long unsigned int goodAtFrameId;
+    long unsigned int mnUsedForLocalMap;
 
     static std::mutex mGlobalMutex;
 
@@ -129,9 +156,9 @@ protected:
      // Reference KeyFrame
      KeyFrame* mpRefKF;
 
-     // Tracking counters
-     int mnVisible;
-     int mnFound;
+   //  // Tracking counters
+   //  int mnVisible;
+   //  int mnFound;
 
      // Bad flag (we do not currently erase MapPoint from memory)
      bool mbBad;

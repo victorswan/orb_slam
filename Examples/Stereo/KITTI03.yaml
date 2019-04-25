@@ -10,6 +10,7 @@ Camera.fy: 721.5377
 Camera.cx: 609.5593
 Camera.cy: 172.854
 
+Camera.distmodel: radtan
 Camera.k1: 0.0
 Camera.k2: 0.0
 Camera.p1: 0.0

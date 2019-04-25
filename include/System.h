@@ -22,9 +22,12 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-#include<string>
-#include<thread>
-#include<opencv2/core/core.hpp>
+#include <string>
+#include <thread>
+#include <opencv2/core/core.hpp>
+
+/* Add this line to fix problem "Eigen deprecated"*/
+#include <unistd.h>
 
 #include "Tracking.h"
 #include "FrameDrawer.h"
@@ -35,6 +38,7 @@
 #include "KeyFrameDatabase.h"
 #include "ORBVocabulary.h"
 #include "Viewer.h"
+#include "Util.hpp"
 
 namespace ORB_SLAM2
 {
@@ -112,9 +116,19 @@ public:
     // See format details at: http://www.cvlibs.net/datasets/kitti/eval_odometry.php
     void SaveTrajectoryKITTI(const string &filename);
 
-    // TODO: Save/Load functions
-    // SaveMap(const string &filename);
-    // LoadMap(const string &filename);
+    //
+    void SaveTrackingLog(const string &filename);
+    void SaveGFLog(const string &filename);
+
+    void SetRealTimeFileStream(const string &filename);
+
+
+    void SetBudgetPerFrame(const size_t budget_per_frame);
+    
+
+    //    // TODO: Save/Load functions
+    //    void SaveMap(const std::string &map_path);
+    //    void LoadMap(const std::string &map_path);
 
     // Information from most recent processed frame
     // You can call this right after TrackMonocular (or stereo or RGBD)
@@ -122,7 +136,19 @@ public:
     std::vector<MapPoint*> GetTrackedMapPoints();
     std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
 
-private:
+    //private:
+public:
+
+
+    //
+    void SaveLmkLog(const std::string &filename);
+    void GrabAllLmkLog();
+    std::vector<LmkLog> logLmkLife;
+    //
+
+
+    // frame counter after track loss
+    size_t mFrameLossTrack;
 
     // Input sensor
     eSensor mSensor;

@@ -4,6 +4,20 @@
 # Camera Parameters. Adjust them!
 #--------------------------------------------------------------------------------------------
 
+
+
+# for camera model 2 used in the obs computation
+# Camera2.f: 5.1369248
+# Camera2.k1: -0.28340811
+# Camera2.k2: 0.07395907
+# Camera2.cx: 367.215
+# Camera2.cy: 248.375
+# Camera2.dx: 0.0112
+# Camera2.dy: 0.01123325985
+Camera2.nCols: 752
+Camera2.nRows: 480
+
+
 # Camera calibration and distortion parameters (OpenCV) 
 Camera.fx: 458.654
 Camera.fy: 457.296
@@ -26,7 +40,7 @@ Camera.RGB: 1
 #--------------------------------------------------------------------------------------------
 
 # ORB Extractor: Number of features per image
-ORBextractor.nFeatures: 1000
+ORBextractor.nFeatures: 1000 # 2000 # 
 
 # ORB Extractor: Scale factor between levels in the scale pyramid 	
 ORBextractor.scaleFactor: 1.2
