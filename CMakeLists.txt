@@ -135,32 +135,7 @@ tools/bin_vocabulary.cc)
 target_link_libraries(bin_vocabulary ${PROJECT_NAME})
 
 
-#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
-
-#add_executable(rgbd_tum
-#Examples/RGB-D/rgbd_tum.cc)
-#target_link_libraries(rgbd_tum ${PROJECT_NAME})
-
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo)
-
-#add_executable(stereo_kitti
-#Examples/Stereo/stereo_kitti.cc)
-#target_link_libraries(stereo_kitti ${PROJECT_NAME})
-
-#add_executable(stereo_euroc
-#Examples/Stereo/stereo_euroc.cc)
-#target_link_libraries(stereo_euroc ${PROJECT_NAME})
-
-add_executable(stereo_newcollege
-Examples/Stereo/stereo_newcollege.cc)
-target_link_libraries(stereo_newcollege
-    GL
-    glut
-    GLU
-    ${PROJECT_NAME}
-    ${Boost_LIBRARIES}
-    ${OpenBLAS_LIBRARIES}
-    ${ARMADILLO_LIBRARIES})
 
 add_executable(stereo_general
 Examples/Stereo/stereo_general.cc)
@@ -170,26 +145,6 @@ target_link_libraries(stereo_general
     GLU
     ${PROJECT_NAME}
     ${Boost_LIBRARIES}
-    ${OpenBLAS_LIBRARIES}
-    ${ARMADILLO_LIBRARIES})
-
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular)
-
-#add_executable(mono_tum
-#Examples/Monocular/mono_tum.cc)
-#target_link_libraries(mono_tum ${PROJECT_NAME})
-
-#add_executable(mono_kitti
-#Examples/Monocular/mono_kitti.cc)
-#target_link_libraries(mono_kitti ${PROJECT_NAME})
-
-add_executable(mono_euroc
-Examples/Monocular/mono_euroc.cc)
-target_link_libraries(mono_euroc
-    GL
-    glut
-    GLU
-    ${PROJECT_NAME}
     ${OpenBLAS_LIBRARIES}
     ${ARMADILLO_LIBRARIES})
 

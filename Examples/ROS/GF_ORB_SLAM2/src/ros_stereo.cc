@@ -39,8 +39,6 @@
 
 using namespace std;
 
-//#define USE_FISHEYE_DISTORTION
-
 class ImageGrabber
 {
 public:
