@@ -7,9 +7,13 @@ Good feature matching is an enhancement module that is designed for feature-base
   <figcaption>Performance vs. latency evaluation on EuRoC monocular sequences (left-cam only)</figcaption>
 </figure>
 
-## Build & Run
+Compared with the previous version of (GF)[https://github.com/YipuZhao/GF_ORB_SLAM], we include several additioanl features in this repo:
+ - this repo is based on ORB-SLAM2, which supports monocular, stereo and rgb-d visual input;
+ - GPU accelerated FAST detection (uncomment Macro **CUDA_ACC_FAST** in ORBextractor.h to enable it);
+ - sped-up lazy stereo matching (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in Frame.h to enable it);
+ - ~~map saving & loading modules~~
 
-This repo is an integration of good feature matching to ORB-SLAM2 (which supports monocular, stereo and rgb-d visual input).  When tested on multiple public benchmarks, GF-ORB-SLAM yields the same level of pose tracking latency, while preserving the accuracy & robustness of ORB-SLAM baseline.
+## Build & Run
 
 To build GF-ORB-SLAM2, first clone the repo to your ros workspace
 
