@@ -28,14 +28,19 @@ To build GF-ORB-SLAM2, first clone the repo to your catkin workspace
 
 	cd ~/catkin_ws/src && git clone git@github.com:YipuZhao/gf_orb_slam2.git && git checkout catkin
 
-Then build dependencies (by default we assume a GPU is available; )
+Then build dependencies (by default we assume a GPU is available for opencv; otherwise use the non-gpu build cmd in build_dep.sh accordingly)
 
 	cd gf_orb_slam2 && ./build_dep.sh && ./build_supports.sh
 
-Now build the GF-ORB-SLAM2 package with O3 flag
+Now build the GF-ORB-SLAM2 package with GPU
 
 	catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG -march=native" -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG -march=native"
 	catkin build --this
+
+or without GPU:
+
+    catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG -march=native" -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG -march=native"
+    catkin build --this -DENABLE_CUDA_IN_OPENCV=False
 
 To run GF-ORB-SLAM2 on public benchmarks, please refer to batch evaluation scripts at folder 
 

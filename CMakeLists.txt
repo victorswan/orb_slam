@@ -25,7 +25,7 @@ MESSAGE("Build type: " ${CMAKE_BUILD_TYPE})
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wl,--no-as-needed -pthread  -Wall  -g -march=native ")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -pthread  -Wall   -g -march=native")
 
-IF(NOT ENABLE_CUDA_IN_OPENCV)
+IF(NOT DEFINED ENABLE_CUDA_IN_OPENCV)
     SET(ENABLE_CUDA_IN_OPENCV True)
 ENDIF()
 message("Enable cuda support: " ${ENABLE_CUDA_IN_OPENCV})
