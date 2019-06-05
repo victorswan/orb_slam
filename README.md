@@ -7,11 +7,12 @@ Good feature matching is an enhancement module that is designed for feature-base
   <figcaption>Performance vs. latency evaluation on EuRoC monocular sequences (left-cam only)</figcaption>
 </figure>
 
-Compared with the previous version of [GF](https://github.com/YipuZhao/GF_ORB_SLAM), we introduce map hashing that bounds the cost of long-term, large-scale VSLAM.  
-[![Watch the video](https://img.youtube.com/vi/mnIf4PPqGHY/2.jpg)](https://youtu.be/mnIf4PPqGHY)
-[![Watch the video](https://img.youtube.com/vi/AEP1Xg58QjA/0.jpg)](https://youtu.be/AEP1Xg58QjA)
+Compared with the previous version of [GF](https://github.com/YipuZhao/GF_ORB_SLAM), we also introduce map hashing, which is designed to bound the cost of lcoal map related operations in long-term, large-scale VSLAM.  
 
-There are also many additional features provided in this repo:
+[![Watch the video](https://img.youtube.com/vi/mnIf4PPqGHY/default.jpg)](https://youtu.be/mnIf4PPqGHY)
+[![Watch the video](https://img.youtube.com/vi/AEP1Xg58QjA/default.jpg)](https://youtu.be/AEP1Xg58QjA)
+
+As the central part of autonomous navigation stack developed at Georgia Tech IVALab, GF-ORB-SLAM 2 supports additional features as follows:
  - this repo is based on ORB-SLAM2, which supports monocular, stereo and rgb-d visual input;
  - GPU accelerated FAST detection (uncomment Macro **CUDA_ACC_FAST** in **ORBextractor.h** to enable it);
  - sped-up lazy stereo matching (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in **Frame.h** to enable it; for fisheye lens, uncomment **USE_FISHEYE_DISTORTION** as well);
@@ -21,18 +22,17 @@ There are also many additional features provided in this repo:
 
 ## Build & Run
 
-To build GF-ORB-SLAM2, first clone the repo to your ros workspace
+To build GF-ORB-SLAM2, first clone the repo to your catkin workspace
 
-	git clone git@github.com:YipuZhao/GF_ORB_SLAM2.git
+	cd ~/catkin_ws/src && git clone git@github.com:YipuZhao/gf_orb_slam2.git
 
-Then follow the instructions of ORB-SLAM to prepare the dependencies of ORB-SLAM: eigen, cholmod, gl/glew.  
-On top of that, build additional dependencies for good feature by calling
+Then build dependencies for good feature by calling
 
-	./build_dep.sh
+	cd gf_orb_slam2 && ./build_dep.sh && ./build_supports.sh
 
-The last step is to build the GF-ORB-SLAM2 itself
+Now build the GF-ORB-SLAM2 package
 
-	./build.sh
+	catkin build --this
 
 To run GF-ORB-SLAM2, please refer to some example batch evaluation scripts at folder 
 
