@@ -26,7 +26,7 @@ As the central part of autonomous navigation stack developed at Georgia Tech IVA
 
 To build GF-ORB-SLAM2, first clone the repo to your catkin workspace
 
-	cd ~/catkin_ws/src && git clone git@github.com:YipuZhao/gf_orb_slam2.git
+	cd ~/catkin_ws/src && git clone git@github.com:YipuZhao/gf_orb_slam2.git && git checkout catkin
 
 Then build dependencies for good feature by calling
 
