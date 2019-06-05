@@ -18,6 +18,7 @@ As the central part of autonomous navigation stack developed at Georgia Tech IVA
  - GPU accelerated FAST detection (uncomment Macro **CUDA_ACC_FAST** in **ORBextractor.h** to enable it);
  - sped-up lazy stereo matching (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in **Frame.h** to enable it; for fisheye lens, uncomment **USE_FISHEYE_DISTORTION** as well);
  - map saving & loading modules (uncomment Macro **ENABLE_MAP_IO** in **Frame.h** to enable them)
+ - Pose initialization with ChAruco (uncomment Macro **INIT_WITH_ARUCHO** in **Tracking.h** to enable it);
  - catkinize
  - to be included ~~visual inertial fusion~~
 
