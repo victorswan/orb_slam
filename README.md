@@ -10,7 +10,7 @@ Good feature matching is an enhancement module that is designed for feature-base
 Compared with the previous version of [GF](https://github.com/YipuZhao/GF_ORB_SLAM), we also introduce map hashing, which is designed to bound the cost of lcoal map related operations in long-term, large-scale VSLAM.  
 
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=mnIf4PPqGHY
-" target="_blank"><img src="http://img.youtube.com/vi/mnIf4PPqGHY/default.jpg" 
+" target="_blank"><img src="https://github.com/YipuZhao/gf_orb_slam2/blob/catkin/maphash_demo.png" 
 alt="SLAM View of MapHash vs. Baseline ORB" width="480" height="360" border="10" /></a>
 
 As the central part of autonomous navigation stack developed at Georgia Tech IVALab, GF-ORB-SLAM 2 supports additional features as follows:
