@@ -13,10 +13,6 @@ Compared with the previous version of [GF](https://github.com/YipuZhao/GF_ORB_SL
 " target="_blank"><img src="http://img.youtube.com/vi/mnIf4PPqGHY/default.jpg" 
 alt="SLAM View of MapHash vs. Baseline ORB" width="480" height="360" border="10" /></a>
 
-<a href="http://www.youtube.com/watch?feature=player_embedded&v=AEP1Xg58QjA
-" target="_blank"><img src="http://img.youtube.com/vi/AEP1Xg58QjA/default.jpg" 
-alt="Profile View of MapHash vs. Baseline ORB" width="480" height="360" border="10" /></a>
-
 As the central part of autonomous navigation stack developed at Georgia Tech IVALab, GF-ORB-SLAM 2 supports additional features as follows:
  - this repo is based on ORB-SLAM2, which supports monocular, stereo and rgb-d visual input;
  - GPU accelerated FAST detection (uncomment Macro **CUDA_ACC_FAST** in **ORBextractor.h** to enable it);
