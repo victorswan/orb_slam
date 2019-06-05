@@ -81,17 +81,17 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
     // ORB extraction
-    thread threadLeft(&Frame::ExtractORB,this,0,imLeft);
-    thread threadRight(&Frame::ExtractORB,this,1,imRight);
+    std::thread threadLeft(&Frame::ExtractORB,this,0,imLeft);
+    std::thread threadRight(&Frame::ExtractORB,this,1,imRight);
     threadLeft.join();
     threadRight.join();
 
     N = mvKeys.size();
 
+    // cout << "number of keypoints detected: left = " << mvKeys.size() << "; right = " << mvKeysRight.size() << endl;
+
     if(mvKeys.empty())
         return;
-
-    //    cout << "number of keypoints detected: left = " << mvKeys.size() << "; right = " << mvKeysRight.size() << endl;
 
 #ifdef ALTER_STEREO_MATCHING
     //
@@ -113,7 +113,7 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
 
     mvbOutlier = vector<bool>(N,false);
     mvbCandidate = vector<bool>(N,true);
-    mvbJacobBuilt = vector<bool>(N,false);
+  //  mvbJacobBuilt = vector<bool>(N,false);
     mvbGoodFeature = vector<bool>(N,false);
     //
     mvpMatchScore = vector<int>(N,static_cast<int>(999));
@@ -200,7 +200,7 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
 
     mvbOutlier = vector<bool>(N,false);
     mvbCandidate = vector<bool>(N,true);
-    mvbJacobBuilt = vector<bool>(N,false);
+   // mvbJacobBuilt = vector<bool>(N,false);
     mvbGoodFeature = vector<bool>(N,false);
     //
     mvpMatchScore = vector<int>(N,static_cast<int>(999));
@@ -231,7 +231,10 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
 
 }
 
-Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
+
+Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp,
+             ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K,
+             cv::Mat &distCoef, const float &bf, const float &thDepth)
     :mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
       mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
 {
@@ -263,7 +266,7 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
 
     mvbOutlier = vector<bool>(N,false);
     mvbCandidate = vector<bool>(N,true);
-    mvbJacobBuilt = vector<bool>(N,false);
+  //  mvbJacobBuilt = vector<bool>(N,false);
     mvbGoodFeature = vector<bool>(N,false);
     //
     mvpMatchScore = vector<int>(N,static_cast<int>(999));
@@ -294,7 +297,10 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
     AssignFeaturesToGrid();
 }
 
-Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
+
+Frame::Frame(const cv::Mat &imGray, const double &timeStamp,
+             ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K,
+             cv::Mat &distCoef, const float &bf, const float &thDepth)
     :mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
       mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
 {
@@ -327,7 +333,7 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
     mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
     mvbOutlier = vector<bool>(N,false);
     mvbCandidate = vector<bool>(N,true);
-    mvbJacobBuilt = vector<bool>(N,false);
+  //  mvbJacobBuilt = vector<bool>(N,false);
     mvbGoodFeature = vector<bool>(N,false);
     //
     mvpMatchScore = vector<int>(N,static_cast<int>(999));
@@ -356,6 +362,7 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
 
     AssignFeaturesToGrid();
 }
+
 
 void Frame::AssignFeaturesToGrid()
 {
@@ -1186,6 +1193,11 @@ int Frame::ComputeStereoMatches_Undistorted(bool isOnline)
     }
 
     if (!isOnline) {
+      
+      //
+      if (mvDistIdx.empty())
+	return nmatched;
+      
         sort(mvDistIdx.begin(),mvDistIdx.end());
         const float median = mvDistIdx[mvDistIdx.size()/2].first;
         const float thDist = 1.5f*1.4f*median;
@@ -1206,6 +1218,293 @@ int Frame::ComputeStereoMatches_Undistorted(bool isOnline)
     }
 
     return nmatched;
+}
+
+int Frame::ComputeStereoMatches_Undistorted_ByBucketing(bool isOnline)
+{
+    const int thOrbDist = (ORBmatcher::TH_HIGH+ORBmatcher::TH_LOW)/2;
+
+    const int nRows = mpORBextractorLeft->mvImagePyramid[0].rows;
+
+    if (mvRowIndices.size() != nRows) {
+        PrepareStereoCandidates();
+        std::cout << "redo the stereo candidate preparation!" << std::endl;
+    }
+
+    // Set limits for search
+    const float minZ = mb;
+
+    int nmatched = 0;
+
+    std::vector<unsigned int> unmatched;
+    Frame::GetUnMatchedKPbyBucketing(this, unmatched);
+
+//    for(int iL=0; iL<N; iL++)
+    for(int iL:unmatched)
+    {
+
+#ifdef DELAYED_STEREO_MATCHING
+        if (isOnline) {
+            // only stereo matching points with associated 3D map points
+            if (this->mvpMapPoints[iL] == NULL || this->mvStereoMatched[iL] == true) {
+                continue ;
+            }
+        }
+        else {
+            // stereo matching the rest of points
+            if (this->mvStereoMatched[iL] == true) {
+                continue ;
+            }
+        }
+#endif
+
+        float minD = 0;
+        float maxD = mbf/minZ;
+        this->mvStereoMatched[iL] = true;
+
+        const cv::KeyPoint &kpL = mvKeysUn[iL];
+        const int &levelL = kpL.octave;
+        const float &vL = kpL.pt.y;
+        const float &uL = kpL.pt.x;
+
+        if (vL < 0 || vL > nRows-1)
+            continue;
+
+        const vector<size_t> &vCandidates = mvRowIndices[int(vL)];
+
+        if(vCandidates.empty())
+            continue;
+
+        //        cout << "Before - minD: " << minD << " maxD: " << maxD << ";   ";
+        // reduce the range of stereo matching for map-matched points
+        if (this->mvpMapPoints[iL] != NULL) {
+            MapPoint * pMP = this->mvpMapPoints[iL];
+            if (!pMP->isBad()) {
+                cv::Mat Pw = pMP->GetWorldPos(), Pc;
+                if (WorldToCameraPoint(Pw, Pc) == true) {
+                    //
+                    float disp = float(mbf) / Pc.at<float>(2);
+                    minD = std::max(disp - float(DISPARITY_THRES), 0.0f);
+                    maxD = std::min(disp + float(DISPARITY_THRES), float(mbf)/float(mb));
+                }
+            }
+        }
+        //        cout << "After - minD: " << minD << " maxD: " << maxD << endl;
+        const float minU = uL-maxD;
+        const float maxU = uL-minD;
+
+        if(maxU<mnMinX)
+            continue;
+
+        int bestDist = ORBmatcher::TH_HIGH;
+        size_t bestIdxR = 0;
+
+        const cv::Mat &dL = mDescriptors.row(iL);
+
+        // Compare descriptor to right keypoints
+        for(size_t iC=0; iC<vCandidates.size(); iC++)
+        {
+            const size_t iR = vCandidates[iC];
+            const cv::KeyPoint &kpR = mvKeysRightUn[iR];
+
+            if(kpR.octave<levelL-1 || kpR.octave>levelL+1)
+                continue;
+
+            const float &uR = kpR.pt.x;
+
+            if(uR>=minU && uR<=maxU)
+            {
+                const cv::Mat &dR = mDescriptorsRight.row(iR);
+                const int dist = ORBmatcher::DescriptorDistance(dL,dR);
+
+                if(dist<bestDist)
+                {
+                    bestDist = dist;
+                    bestIdxR = iR;
+                }
+            }
+        }
+
+        // Subpixel match by correlation
+        if(bestDist<thOrbDist)
+        {
+            float bestuR = mvKeysRightUn[bestIdxR].pt.x;
+            float disparity = (uL-bestuR);
+            if(disparity>=minD && disparity<maxD)
+            {
+                if(disparity<=0)
+                {
+                    disparity=0.01;
+                    bestuR = uL-0.01;
+                }
+                mvDepth[iL]=mbf/disparity;
+                mvuRight[iL] = bestuR;
+                mvDistIdx.push_back(pair<int,int>(bestDist,iL));
+            }
+
+        }
+
+        nmatched ++;
+    }
+
+    if (!isOnline) {
+        sort(mvDistIdx.begin(),mvDistIdx.end());
+        const float median = mvDistIdx[mvDistIdx.size()/2].first;
+        const float thDist = 1.5f*1.4f*median;
+        // reduce the number of stereo matchings being dropped
+        //        const float thDist = 3.0f*median;
+
+        for(int i=mvDistIdx.size()-1;i>=0;i--)
+        {
+            if(mvDistIdx[i].first<thDist)
+                break;
+            else
+            {
+                mvuRight[mvDistIdx[i].second]=-1;
+                mvDepth[mvDistIdx[i].second]=-1;
+                nmatched --;
+            }
+        }
+    }
+
+    return nmatched;
+}
+
+void Frame::GetUnMatchedKPbyBucketing(const Frame *pFrame, std::vector<unsigned int> &vUnMatchedKeyPoints)
+{
+    //    int32_t max_features = BUCKET_FEATURE_NUM;
+    float bucket_width = FRAME_GRID_COLS;
+    float bucket_height = FRAME_GRID_ROWS;
+
+    // find max values
+    float u_max = -99999,   v_max = -99999;
+    float u_min = 99999,    v_min = 99999;
+
+    //    if(mbTrackLossAlert = 2){
+    //        for(unsigned int i=0; i!=pFrame->N; i++){
+    //            if(pFrame->mvpMapPoints[i] != NULL)
+    //                vUnMatchedKeyPoints.push_back(i);
+    //        }
+    //        return;
+    //    }
+
+    //    int32_t inlier_num = 0;
+    for(auto it = pFrame->mvKeysUn.begin(); it != pFrame->mvKeysUn.end(); it++)  {
+        //        for(int i= 0; i<pFrame->mvKeysUn.size(); i++)  {
+        //        MapPoint* pMP = pFrame->mvpMapPoints[i];
+        //        if(pMP) {
+        //            if (pFrame->mvbOutlier[i] == false && pFrame->mvbCandidate[i] == true) {
+        // kpUn.pt.x, kpUn.pt.y;
+        //                cv::KeyPoint kpUn = pFrame->mvKeysUn[i];
+
+        //
+        if (it->pt.x > u_max)
+            u_max = it->pt.x;
+        if (it->pt.y > v_max)
+            v_max = it->pt.y;
+        //
+        if (it->pt.x < u_min)
+            u_min = it->pt.x;
+        if (it->pt.y < v_min)
+            v_min = it->pt.y;
+        //
+        //                inlier_num ++;
+        //            }
+        //        }
+    }
+
+    //    std::cout << "u_max = " << u_max << "; "  << "v_max = " << v_max << "; " << std::endl;
+    //    std::cout << "u_min = " << u_min << "; "  << "v_min = " << v_min << "; " << std::endl;
+    //    std::cout<<std::endl<<"STEP 1 FINISHED, "<<std::endl;
+    // allocate number of buckets needed
+    int32_t bucket_cols = (int32_t)floor( (u_max - u_min) / float(bucket_width) )  + 1;
+    int32_t bucket_rows = (int32_t)floor( (v_max - v_min) / float(bucket_height) ) + 1;
+    Grid *buckets = new Grid[bucket_cols*bucket_rows];
+
+    //    std::cout << "bucket_cols = " << bucket_cols << "; "  << "bucket_rows = " << bucket_rows << "; " << std::endl;
+    //    int32_t max_features = (int32_t)floor( float(inlier_num) * this->ratio_good_inlier_predef / float(bucket_cols*bucket_rows) );
+    //    std::cout<<std::endl<<"STEP 2 FINISHED, "<<std::endl;
+    // assign all keypoints to the buckets
+    for(int i = 0; i != pFrame->mvKeysUn.size(); i++)  {
+        //    for(auto itKpUn = pFrame->mvKeysUn.begin(); itKpUn!=pFrame->mvKeysUn.end(); i++, itKpUn++)  {
+        //        MapPoint* pMP = pFrame->mvpMapPoints[i];
+        //        if(pMP) {
+        //            if (pFrame->mvbOutlier[i] == false && pFrame->mvbCandidate[i] == true) {
+        //                std::cout << "enter one map point" << std::endl;
+        // kpUn.pt.x, kpUn.pt.y;
+        //                cv::KeyPoint kpUn = pFrame->mvKeysUn[i];
+        int32_t u = (int32_t)floor( float(pFrame->mvKeysUn[i].pt.x - u_min) / float(bucket_width) );
+        int32_t v = (int32_t)floor( float(pFrame->mvKeysUn[i].pt.y - v_min) / float(bucket_height) );
+        //                std::cout << "u = " << u << "; v = " << v << std::endl;
+        if (pFrame->mvpMapPoints[i] == NULL)    // not matched to any local MapPoint yet
+        {
+            buckets[ v * bucket_cols + u ].kp_unmatched_indices.push_back(i);
+        }
+        else
+        {
+            buckets[ v * bucket_cols + u ].matched_size ++;
+        }
+        //            }
+        //        }
+    }
+    //    int32_t max_features = (int32_t)ceil( float(this->num_good_inlier_predef) / float(bucket_cols*bucket_rows) ) + 1;
+
+    float num_mached_kpts = 0;  // total #matched_features
+    float num_matched_buckets = 0;  // #matched_grids
+    for (size_t i=0; i<bucket_cols*bucket_rows; i++)
+    {
+        if(buckets[i].matched_size>0)
+        {
+            num_matched_buckets ++;
+            num_mached_kpts += buckets[i].matched_size;
+        }
+
+    }
+    unsigned int min_matched_features = (unsigned int)ceil(num_mached_kpts / num_matched_buckets / 2.0);
+    min_matched_features = max(min_matched_features, (unsigned int)BUCKET_MIN_FEATURES_PER_GRID);
+    //    std::cout << "fill in content for buckets!" << std::endl;
+
+    // refill p_matched from buckets
+    //    size_t total_num = 0;
+    //    bool stop_bucketing = false;
+    vUnMatchedKeyPoints.clear();
+    for (size_t i=0; i<bucket_cols*bucket_rows; i++) {
+
+        //        if (stop_bucketing == true)
+        //            break ;
+
+        if (buckets[i].matched_size < min_matched_features)
+        {
+            vUnMatchedKeyPoints.insert(vUnMatchedKeyPoints.end(), buckets[i].kp_unmatched_indices.begin(),  buckets[i].kp_unmatched_indices.end());
+        }
+
+        // shuffle bucket indices randomly
+        //        std::random_shuffle(buckets[i].begin(),buckets[i].end());
+
+        // add up to max_features features from this bucket to p_matched
+        //        size_t k=0;
+        //        for (vector<size_t>::iterator it=buckets[i].begin(); it!=buckets[i].end(); it++) {
+        //            //
+        //            //            std::cout << "select match " << *it << " from bucket " << i << std::endl;
+        //            obsLmk tmpLmk(*it, 1);
+        //            mpBucketed.push_back(tmpLmk);
+        //            k++;
+        //            total_num ++;
+        //            //
+        //            if (total_num >= this->num_good_inlier_predef) {
+        //                stop_bucketing = true;
+        //                break ;
+        //            }
+        //            if (k >= max_features)
+        //                break;
+        //        }
+    }
+
+    //    std::cout << "feature bucketed = " << total_num << std::endl;
+    //    std::cout << "done with bucketing!" << std::endl;
+    //    std::cout<<"ALL FINISHED"<<std::endl;
+    // free buckets
+    delete []buckets;
 }
 
 

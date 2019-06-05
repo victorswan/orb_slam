@@ -40,7 +40,7 @@ namespace ORB_SLAM2
 LoopClosing::LoopClosing(Map *pMap, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, const bool bFixScale):
     mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
     mpKeyFrameDB(pDB), mpORBVocabulary(pVoc), mpMatchedKF(NULL), mLastLoopKFid(0), mbRunningGBA(false), mbFinishedGBA(true),
-    mbStopGBA(false), mpThreadGBA(NULL), mbFixScale(bFixScale), mnFullBAIdx(0)
+    mbStopGBA(false), mpThreadGBA(NULL), mbFixScale(bFixScale), mnFullBAIdx(0), mdPreviousTimeStamp(0.)
 {
     mnCovisibilityConsistencyTh = 3;
 
@@ -62,7 +62,6 @@ void LoopClosing::SetLocalMapper(LocalMapping *pLocalMapper)
     mpLocalMapper=pLocalMapper;
 }
 
-
 void LoopClosing::Run()
 {
     mbFinished =false;
@@ -77,20 +76,27 @@ void LoopClosing::Run()
         // Check if there are keyframes in the queue
         if(CheckNewKeyFrames())
         {
-            // Detect loop candidates and check covisibility consistency
-            if(DetectLoop())
-            {
-               // Compute similarity transformation [sR|t]
-               // In the stereo/RGBD case s=1
-               if(ComputeSim3())
-               {
-                   // Perform loop fusion and pose graph optimization
-                   CorrectLoop();
-               }
-            }
+           // ROS_INFO("start proc new KF in loop closing thread!");
+//            if(mpTracker->logCurrentFrame.frame_time_stamp - mdPreviousTimeStamp > TEMPORAL_CONSTRAINT_TIME)
+//            {
+                // Detect loop candidates and check covisibility consistency
+                if(DetectLoop())
+                {
+                    // Compute similarity transformation [sR|t]
+                    // In the stereo/RGBD case s=1
+                    if(ComputeSim3())
+                    {
+                        // Perform loop fusion and pose graph optimization
+                        CorrectLoop();
+
+//                        mdPreviousTimeStamp = mpTracker->logCurrentFrame.frame_time_stamp;
+//                        mpTracker->ResetInitNumFrame();
+                    }
+                }
+//            }
         }
 
-#endif       
+#endif
 
         ResetIfRequested();
 
@@ -330,7 +336,7 @@ bool LoopClosing::ComputeSim3()
                 for(size_t j=0, jend=vbInliers.size(); j<jend; j++)
                 {
                     if(vbInliers[j])
-                       vpMapPointMatches[j]=vvpMapPointMatches[i][j];
+                        vpMapPointMatches[j]=vvpMapPointMatches[i][j];
                 }
 
                 cv::Mat R = pSolver->GetEstimatedRotation();
@@ -360,7 +366,7 @@ bool LoopClosing::ComputeSim3()
     if(!bMatch)
     {
         for(int i=0; i<nInitialCandidates; i++)
-             mvpEnoughConsistentCandidates[i]->SetErase();
+            mvpEnoughConsistentCandidates[i]->SetErase();
         mpCurrentKF->SetErase();
         return false;
     }
@@ -417,7 +423,7 @@ bool LoopClosing::ComputeSim3()
 
 void LoopClosing::CorrectLoop()
 {
-    cout << "Loop detected!" << endl;
+    cout << fixed << setprecision(6) << mpTracker->logCurrentFrame.frame_time_stamp << ": Loop detected!" << endl;
 
     // Send a stop signal to Local Mapping
     // Avoid new keyframes are inserted while correcting the loop
@@ -557,7 +563,6 @@ void LoopClosing::CorrectLoop()
     // Fuse duplications.
     SearchAndFuse(CorrectedSim3);
 
-
     // After the MapPoint fusion, new links in the covisibility graph will appear attaching both sides of the loop
     map<KeyFrame*, set<KeyFrame*> > LoopConnections;
 
@@ -578,7 +583,7 @@ void LoopClosing::CorrectLoop()
             LoopConnections[pKFi].erase(*vit2);
         }
     }
-
+    
     // Optimize graph
     Optimizer::OptimizeEssentialGraph(mpMap, mpMatchedKF, mpCurrentKF, NonCorrectedSim3, CorrectedSim3, LoopConnections, mbFixScale);
 
@@ -595,9 +600,9 @@ void LoopClosing::CorrectLoop()
     mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment,this,mpCurrentKF->mnId);
 
     // Loop closed. Release Local Mapping.
-    mpLocalMapper->Release();    
+    mpLocalMapper->Release();
 
-    mLastLoopKFid = mpCurrentKF->mnId;   
+    mLastLoopKFid = mpCurrentKF->mnId;
 }
 
 void LoopClosing::SearchAndFuse(const KeyFrameAndPose &CorrectedPosesMap)
@@ -639,9 +644,9 @@ void LoopClosing::RequestReset()
     while(1)
     {
         {
-        unique_lock<mutex> lock2(mMutexReset);
-        if(!mbResetRequested)
-            break;
+            unique_lock<mutex> lock2(mMutexReset);
+            if(!mbResetRequested)
+                break;
         }
         usleep(5000);
     }
@@ -660,10 +665,15 @@ void LoopClosing::ResetIfRequested()
 
 void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
 {
-    cout << "Starting Global Bundle Adjustment" << endl;
+    cerr << fixed << setprecision(6) << mpTracker->logCurrentFrame.frame_time_stamp << ": Starting Global Bundle Adjustment" << endl;
 
     int idx =  mnFullBAIdx;
+
+#ifdef GROUND_TRUTH_GEN_MODE
+    Optimizer::GlobalBundleAdjustemnt(mpMap,30,&mbStopGBA,nLoopKF,false);
+#else
     Optimizer::GlobalBundleAdjustemnt(mpMap,10,&mbStopGBA,nLoopKF,false);
+#endif
 
     // Update all MapPoints and KeyFrames
     // Local Mapping was active during BA, that means that there might be new keyframes
@@ -676,8 +686,8 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
 
         if(!mbStopGBA)
         {
-            cout << "Global Bundle Adjustment finished" << endl;
-            cout << "Updating map ..." << endl;
+            cout << fixed << setprecision(6) << mpTracker->logCurrentFrame.frame_time_stamp << ": Global Bundle Adjustment finished" << endl;
+            cout << fixed << setprecision(6) << mpTracker->logCurrentFrame.frame_time_stamp << ": Updating map ..." << endl;
             mpLocalMapper->RequestStop();
             // Wait until Local Mapping has effectively stopped
 
@@ -750,18 +760,21 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
 
                     pMP->SetWorldPos(Rwc*Xc+twc);
                 }
-            }            
+            }
 
             mpMap->InformNewBigChange();
 
             mpLocalMapper->Release();
 
-            cout << "Map updated!" << endl;
+            cout << fixed << setprecision(6) << mpTracker->logCurrentFrame.frame_time_stamp << ": Map updated!" << endl;
         }
 
         mbFinishedGBA = true;
         mbRunningGBA = false;
     }
+
+    cerr << fixed << setprecision(6) << mpTracker->logCurrentFrame.frame_time_stamp << ": Global Bundle Adjustment finished" << endl;
+
 }
 
 void LoopClosing::RequestFinish()
@@ -787,6 +800,18 @@ bool LoopClosing::isFinished()
     unique_lock<mutex> lock(mMutexFinish);
     return mbFinished;
 }
+
+//void LoopClosing::SetNeedLoop(bool flag)
+//{
+//    unique_lock<mutex> lock(mMutexNeedLoop);
+//    mbNeedLoop = flag;
+//}
+
+//bool LoopClosing::NeedLoop()
+//{
+//    unique_lock<mutex> lock(mMutexNeedLoop);
+//    return mbNeedLoop;
+//}
 
 
 } //namespace ORB_SLAM

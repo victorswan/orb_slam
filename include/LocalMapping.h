@@ -26,8 +26,15 @@
 #include "LoopClosing.h"
 #include "Tracking.h"
 #include "KeyFrameDatabase.h"
+#include "Hashing.h"
+#include "Util.hpp"
 
 #include <mutex>
+
+
+//#define LOGGING_KF_LIST
+
+//#define LOCAL_BA_TIME_LOGGING
 
 
 namespace ORB_SLAM2
@@ -42,8 +49,12 @@ class LocalMapping
 public:
     LocalMapping(Map* pMap, const float bMonocular);
 
-    void SetLoopCloser(LoopClosing* pLoopCloser);
+    ~LocalMapping() {
+        f_realTimeBA.close();
+    }
 
+    void SetLoopCloser(LoopClosing* pLoopCloser);
+    void SetHashHandler(HASHING::MultiIndexHashing* pHashHandler);
     void SetTracker(Tracking* pTracker);
 
     // Main function
@@ -72,7 +83,21 @@ public:
         return mlNewKeyFrames.size();
     }
 
+    // void SetNeedUpdateHashTables(bool flag);
+
+    bool NeedUpdateHashTables();
+
+    void UpdateHashTables(std::vector<MapPoint*>& vpMPs);
+
+    void SetRealTimeFileStream(string fNameRealTimeBA);
+
+    // Time log
+    vector<MappingLog> mBATimeLog;
+    MappingLog logCurrentKeyFrame;
+
 protected:
+//    void UpdateHashTables(std::vector<MapPoint*>& vpMPs);
+//    void UpdateHashTables(std::list<MapPoint*>& vpMPs);
 
     bool CheckNewKeyFrames();
     void ProcessNewKeyFrame();
@@ -99,16 +124,25 @@ protected:
     bool mbFinished;
     std::mutex mMutexFinish;
 
+#ifdef LOGGING_KF_LIST
+    vector<size_t> mvKeyFrameList;
+    vector<size_t> mvFixedFrameList;
+#endif
+
+    std::ofstream f_realTimeBA;
+
     Map* mpMap;
 
     LoopClosing* mpLoopCloser;
     Tracking* mpTracker;
+    HASHING::MultiIndexHashing* mpHashMethod;
 
     std::list<KeyFrame*> mlNewKeyFrames;
 
     KeyFrame* mpCurrentKeyFrame;
 
     std::list<MapPoint*> mlpRecentAddedMapPoints;
+    std::vector<MapPoint*> mvpNewAddedMapPoints;
 
     std::mutex mMutexNewKFs;
 
@@ -121,6 +155,7 @@ protected:
 
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
+    std::mutex mMutexUpdateHashTables;
 };
 
 } //namespace ORB_SLAM

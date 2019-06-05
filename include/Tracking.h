@@ -21,8 +21,8 @@
 #ifndef TRACKING_H
 #define TRACKING_H
 
-#include<opencv2/core/core.hpp>
-#include<opencv2/features2d/features2d.hpp>
+// #include <opencv2/core/core.hpp>
+// #include <opencv2/features2d/features2d.hpp>
 
 #include "Viewer.h"
 #include "FrameDrawer.h"
@@ -37,11 +37,14 @@
 #include "MapDrawer.h"
 #include "System.h"
 
+#include "Hashing.h"
+#include "ChArUco.h"
 #include "Observability.h"
 
 #include <set>
 #include <utility>
 #include <algorithm>
+#include "nav_msgs/Odometry.h"
 
 #include <Eigen/Dense>
 using namespace Eigen;
@@ -49,95 +52,94 @@ using namespace Eigen;
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
+// #include <opencv2/xphoto.hpp>
+
 #include <mutex>
 
 
-//#define SIMU_MOTION_BLUR
-//#define TIMECOST_VERBOSE
-//#define LMKNUM_VERBOSE
+/* --- options of initialization --- */
+// #define INIT_WITH_ARUCHO
+
+
+/* --- options for ground truth generation, by running at a slow rate and additional optimization iterations --- */
+// #define GROUND_TRUTH_GEN_MODE
+
+
+/* --- options for outdoor challenging sequences such as RobotCar and XWing --- */
+// #define ENABLE_WHITE_BALANCE
+// #define ENABLE_LARGE_SEARCH_WINDOW
+
+
+/* --- options of closed-loop methods --- */
+// #define PRED_WITH_ODOM
+
+
+/* --- options of key-frame insert condition --- */
+// #define SPARSE_KEYFRAME_COND
 
 
 /* --- options of baseline methods --- */
-//#define ORB_SLAM_BASELINE
+// #define ORB_SLAM_BASELINE
+
+
+/* --- options to priortize feature matching wrt local map --- */
+#ifndef ORB_SLAM_BASELINE
+
+      /* --- options of additional search after pose estimation --- */
+      #define DELAYED_MAP_MATCHING
+
+      /* --- options of turning on hashing-support in SLAM modules --- */
+      #define MAP_SIZE_TRIGGER_HASHING  2000 // 4000 // 
+      #define ONLINE_TABLE_SELECTION
+      #define LOCAL_SEARCH_USING_HASHING
+      // #define ENABLE_TIME_CONTROL_FOR_TRACKING        // for tracking time control
+      #define RELOCALISATION_USING_HASHING
+
+      /* --- options to priortize feature matching wrt local map --- */
+      //#define RANDOM_FEATURE_MAP_MATCHING
+      //#define LONGLIVE_FEATURE_MAP_MATCHING
+      #define GOOD_FEATURE_MAP_MATCHING
+      // include frame-by-frame matchings as prior term in good matching
+      // #define FRAME_MATCHING_INFO_PRIOR
+      // pre-compute Jacobian for next frame at the end of tracking
+      // TODO disable it when using map hash; check the latency vs. performance
+      #define PRECOMPUTE_WITH_MOTION_MODEL
+
+      /* --- parameters used in good feature --- */
+      #define USE_INFO_MATRIX
+      //#define USE_HYBRID_MATRIX
+      //#define USE_OBSERVABILITY_MATRIX
+
+      // limit the budget of computing matrices of existing matches at current frame to 2ms
+      #define MATRIX_BUDGET_REALTIME  0.002
+      // limit the budget of predicting matrices at next frame to 2ms
+      #define MATRIX_BUDGET_PREDICT   0.002
+
+      // For low-power devices with 2-cores, disable multi-thread matrix building
+      #define USE_MULTI_THREAD        true // false // 
+	
+#endif
+
+/* --- options to fair comparison wrt other VO pipelines --- */
 //#define DISABLE_RELOC
+// time to init tracking with full feature set
+#define TIME_INIT_TRACKING          5 // 10 //
+#define MAX_FRAME_LOSS_DURATION     999 // 5
+//#define INITIALIZE_USING_BASELINE
+
 
 /* --- options of non-necessary viz codes --- */
 // when running on long-term large-scale dataset, this will save us a lot of time!
 #define DISABLE_MAP_VIZ
 
-/* --- options of key-frame insert condition --- */
-//#define SPARSE_KEYFRAME_COND
 
-/* --- options to priortize feature matching wrt local map --- */
-#ifndef ORB_SLAM_BASELINE
+/* --- options of debug --- */
+//#define SIMU_MOTION_BLUR
+//#define TIMECOST_VERBOSE
+//#define LMKNUM_VERBOSE
+#define REALTIME_TRAJ_LOGGING
 
-    /* --- options of additional search after pose estimation --- */
-    #define DELAYED_MAP_MATCHING
 
-    /* --- options to reduce the size of local map with good ones only --- */
-    // TODO add map hash macros here
-
-    // #define RANDOM_FEATURE_MAP_MATCHING
-    // #define LONGLIVE_FEATURE_MAP_MATCHING
-
-    #define GOOD_FEATURE_MAP_MATCHING
-    // include frame-by-frame matchings as prior term in good matching
-    // #define FRAME_MATCHING_INFO_PRIOR
-    // pre-compute Jacobian for next frame at the end of tracking
-    // TODO disable it when using map hash; check the latency vs. performance
-    #define PRECOMPUTE_WITH_MOTION_MODEL
-
-    #define USE_INFO_MATRIX
-    //#define USE_HYBRID_MATRIX
-    //#define USE_OBSERVABILITY_MATRIX
-
-    // limit the budget of computing matrices of existing matches at current frame to 2ms
-    #define MATRIX_BUDGET_REALTIME  0.002 // 0.1 // 
-    // limit the budget of predicting matrices at next frame to 2ms
-    #define MATRIX_BUDGET_PREDICT   0.002
-
-    // For low-power devices with 2-cores, disable multi-thread matrix building
-    #define USE_MULTI_THREAD        true // false //
-
-#endif
-
-/* --- options to fair comparison wrt other VO pipelines --- */
-// time to init tracking with full feature set
-#define TIME_INIT_TRACKING      5 // 10 //
-
-#define THRES_INIT_MPT_NUM          100 // 50
-#define SRH_WINDOW_SIZE_INIT        100
-
-#define MAX_FRAME_LOSS_DURATION     5
-
-/* --- options of feature subset selection methods --- */
-//#define RANDOM_FAIR_COMPARISON
-//#define BUCKETING_FAIR_COMPARISON
-#define BUCKET_WIDTH                50
-#define BUCKET_HEIGHT               50
-//#define LONGEST_TRACK_FAIR_COMPARISON
-//#define QUALITY_FAIR_COMPARISON
-//#define GOOD_FEATURE_FAIR_COMPARISON
-//#define RANDOM_ENHANCEMENT
-//#define QUALITY_ENHANCEMENT
-
-//#define WITH_IMU_PREINTEGRATION
-//#define MIN_NUM_MATCHES           30 // 50
-//#define MIN_NUM_GOOD_FEATURES     40 // For KITTI
-//#define MIN_NUM_GOOD_FEATURES     30 // For TUM
-//#define MIN_NUM_GOOD_FEATURES       20 // 30 // 50 // 80 // (with 80 the performance of GF is closed to ALL) // 100 // For EuRoC
-// 40 is used when insert GF at trackMotionModel
-
-/* --- options to good feature selection; discarded since good feature 2.0 --- */
-//#define ENABLE_EXPLICIT_OUTLIER_REJ
-//#define RANSAC_POOL_FOR_SUBSET
-//#define RANSAC_ITER_NUMBER      150 // 100 // 50 //
-
-/* --- options of candidate pooling methods; discarded since good feature 2.0 --- */
-//#define QUALITY_POOL_FOR_SUBSET
-//#define QUALITY_POOL_SCALE         2 // 1.25 // 2.5 // 1.0 // 1.5 // 1.75 //
-//#define QUALITY_POOL_PERCENTILE     0.75 // 0.5 // 0.3 // 0.85 //
-//#define QUALITY_POOL_MAXSIZE        250
 
 namespace ORB_SLAM2
 {
@@ -149,17 +151,18 @@ class LocalMapping;
 class LoopClosing;
 class System;
 
+
 class Tracking
 {  
 
 public:
     Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Map* pMap,
-             KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor);
+	    KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor);
 
     // for test only
     Tracking(const cv::Mat K, const cv::Mat DistCoef) {
-        K.copyTo(mK);
-        DistCoef.copyTo(mDistCoef);
+	K.copyTo(mK);
+	DistCoef.copyTo(mDistCoef);
     }
 
 
@@ -171,6 +174,7 @@ public:
     void SetLocalMapper(LocalMapping* pLocalMapper);
     void SetLoopClosing(LoopClosing* pLoopClosing);
     void SetViewer(Viewer* pViewer);
+    void SetHashHandler(HASHING::MultiIndexHashing* pHashHandler);
 
     // Load new settings
     // The focal lenght should be similar or scale prediction will fail when projecting points
@@ -187,16 +191,48 @@ public:
     void SetRealTimeFileStream(string fNameRealTimeTrack);
 
     void updateORBExtractor();
+    
+    void BufferingOdom(const double & timeStamp, 
+		const double & tx, const double & ty, const double & tz, 
+		const double & qw, const double & qx, const double & qy, const double & qz);
+    
+//    void BufferingOdom(const nav_msgs::Odometry::ConstPtr& msg);
+    
+    void PredictingOdom(const double & time_prev, const double & time_curr, 
+			cv::Mat & T_se);
+
+    inline void ForceReloc() {
+	// cout << "start force reloc" << endl;
+	mState = LOST;
+//        mvpLocalMapPoints = mpMap->GetAllMapPoints();
+//        if (mvpLocalKeyFrames.size() > 0)
+//            mpReferenceKF = mvpLocalKeyFrames[mvpLocalKeyFrames.size()-1];
+//        else
+//            mvpLocalKeyFrames = NULL;
+//        mCurrentFrame.mpReferenceKF = pKFcur;
+	cout << "done with force reloc" << endl;
+    }
+
+    inline void ForceInit() {
+	mState = NOT_INITIALIZED;
+	cout << "done with force reloc" << endl;
+    }
 
 public:
 
     // Tracking states
     enum eTrackingState{
-        SYSTEM_NOT_READY=-1,
-        NO_IMAGES_YET=0,
-        NOT_INITIALIZED=1,
-        OK=2,
-        LOST=3
+	SYSTEM_NOT_READY=-1,
+	NO_IMAGES_YET=0,
+	NOT_INITIALIZED=1,
+	OK=2,
+	LOST=3
+    };
+
+    enum eLocalMapSet{
+	CovisOnly = 1,
+	HashOnly  = 2,
+	Combined  = 3
     };
 
     eTrackingState mState;
@@ -233,8 +269,8 @@ public:
     //    vector<std::pair<double, int> > mFrameInlierSeq;
 
     // Time log
-    vector<TimeLog> mFrameTimeLog;
-    TimeLog logCurrentFrame;
+    vector<TrackingLog> mFrameTimeLog;
+    TrackingLog logCurrentFrame;
 
     //
     void BucketingMatches(const Frame *pFrame, vector<GoodPoint> & mpBucketed);
@@ -258,7 +294,55 @@ public:
     // True if local mapping is deactivated and we are performing only localization
     bool mbOnlyTracking;
 
+#ifdef LOCAL_SEARCH_USING_HASHING
+    
+    inline void StoreLocalMapPointsByCoVis(const std::vector<MapPoint *> &LocalMapPoints)
+    {
+	mvpLocalMapPointsByCoVis.clear();
+	mvpLocalMapPointsByCoVis = LocalMapPoints;
+    }
+
+    inline void RestoreLocalMapPoints(std::vector<MapPoint *> &LocalMapPoints)
+    {
+	//    LocalMapPoints = mvpLocalMapPointsBackup;
+	mvpLocalMapPointsByCoVis.swap(LocalMapPoints);
+    }
+
+    inline bool BackupLocalMapPointsEmpty()
+    {
+	return (mvpLocalMapPointsByCoVis.size()==0);
+    }
+    
+    void UpdateLocalPointsByHashing(eLocalMapSet eLocalMap);
+
+    bool UpdateQueryNumByHashTable(const double time_limit);
+
+#endif
+    
+    bool mbMapHashOTS;
+    bool mbMapHashTriggered;
+    
     void Reset();
+
+    inline void ResetInitNumFrame()
+    {
+	mFrameAfterInital = 0;
+    }
+    
+    inline void SetReferenceKeyFrame(KeyFrame * pKF) {
+	mpReferenceKF = pKF;
+    }
+    
+    inline void SetLastKeyFrame(KeyFrame * pKF) {
+	mpLastKeyFrame = pKF;
+	mnLastKeyFrameId = pKF->mnId;
+    }
+  
+/* 
+    inline void SetLastKeyFrameId(unsigned long id) {
+	mnLastKeyFrameId = id;
+    }
+*/
 
 protected:
 
@@ -282,19 +366,19 @@ protected:
     void UpdateLocalMap();
     void UpdateLocalPoints();
     void UpdateLocalKeyFrames();
-
+    
     bool TrackLocalMap();
 
     int SearchLocalPoints();
-    void SearchAdditionalMatchesInFrame(const double time_for_search, Frame & F);
+    bool SearchAdditionalMatchesInFrame(const double time_for_search, Frame & F);
 
     void PredictJacobianNextFrame(const double time_for_predict, const size_t pred_horizon);
 
     bool NeedNewKeyFrame();
     //
+    bool NeedNewKeyFrame_Temp();
     bool NeedNewKeyFrame_Experimental();
     void CreateNewKeyFrame();
-
 
     void PlotFrameWithPointMatches();
 
@@ -307,6 +391,7 @@ protected:
     //Other Thread Pointers
     LocalMapping* mpLocalMapper;
     LoopClosing* mpLoopClosing;
+    HASHING::MultiIndexHashing* mpHashMethod;
 
     //ORB
     ORBextractor* mpORBextractorLeft, *mpORBextractorRight;
@@ -323,7 +408,10 @@ protected:
     KeyFrame* mpReferenceKF;
     std::vector<KeyFrame*> mvpLocalKeyFrames;
     std::vector<MapPoint*> mvpLocalMapPoints;
-    
+    std::vector<MapPoint*> mvpLocalMapPointsByCoVis;
+    std::vector<MapPoint*> mvpLeftMapPointsByHashing;
+    std::vector<MapPoint*> mvpMapPointsByHashing;
+    std::vector<int> mvpQueriedFeatures;
     // System
     System* mpSystem;
     
@@ -334,6 +422,12 @@ protected:
 
     //Map
     Map* mpMap;
+
+    // #ifdef ENABLE_WHITE_BALANCE
+
+    // cv::Ptr<cv::xphoto::WhiteBalancer> mpBalancer;
+
+    // #endif
 
     //Calibration matrix
     cv::Mat mK;
@@ -347,8 +441,10 @@ protected:
     cv::Mat mMap1_l, mMap2_l, mMap1_r, mMap2_r;
 
     //New KeyFrame rules (according to fps)
-    int mMinFrames;
-    int mMaxFrames;
+//    int mMinFrames;
+//    int mMaxFrames;
+    unsigned long mMinFrames;
+    unsigned long mMaxFrames;
 
     // Threshold close/far points
     // Points seen as close by the stereo/RGBD sensor are considered reliable
@@ -357,6 +453,8 @@ protected:
 
     // frame counter after initialization
     size_t mFrameAfterInital;
+    
+    size_t nFrameSinceLast;
 
     size_t mbTrackLossAlert;
 
@@ -369,8 +467,8 @@ protected:
     //Last Frame, KeyFrame and Relocalisation Info
     KeyFrame* mpLastKeyFrame;
     Frame mLastFrame;
-    unsigned int mnLastKeyFrameId;
-    unsigned int mnLastRelocFrameId;
+    unsigned long mnLastKeyFrameId;
+    unsigned long mnLastRelocFrameId;
 
     //Motion Model
     cv::Mat mVelocity;
@@ -384,6 +482,16 @@ protected:
     //    int budget_matching_in_track = 150; // 60; // 100; //
 
     std::ofstream f_realTimeTrack;
+    
+      //
+#ifdef INIT_WITH_ARUCHO 
+    ChArUco * mpCharuco;
+    cv::Mat mTw_align;
+#endif
+    
+    std::mutex mMutexOdomBuf;
+    vector<OdomLog> mvOdomBuf;
+    cv::Mat Tb2c, Tc2b;
 
 };
 

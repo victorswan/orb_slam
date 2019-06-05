@@ -7,7 +7,7 @@
 * ORB-SLAM2 is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
 * the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version. 
+* (at your option) any later version.
 *
 * ORB-SLAM2 is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,7 +21,7 @@
 #ifndef FRAME_H
 #define FRAME_H
 
-#include<vector>
+#include <vector>
 
 #include "MapPoint.h"
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
@@ -39,24 +39,57 @@
 // only uncomment it for stereo pipeline
 #define DELAYED_STEREO_MATCHING
 
-// For fisheye collected sequences such as TUM VI
-//#define USE_FISHEYE_DISTORTION
+// For fisheye collected sequences such as TUM VI & MYNT
+#define USE_FISHEYE_DISTORTION
 
 // Reduction of disparity search range for map-matched points
-#define DISPARITY_THRES     50.0 // 20.0 // 10.0 // 5.0
+#define DISPARITY_THRES     50.0
+
+
+// For map reuse and update
+#define ENABLE_MAP_IO
+
 
 namespace ORB_SLAM2
 {
+
+// NOTE
+// when enabling map-reusing, make sure the grids are configured 
+// indentically; changing grid configurations will lead to segfault 
+// when trying to search 2D projection of 3D map points
+
+// Optmized for 480 * 640, e.g. Hololens
+//#define FRAME_GRID_COLS 48
+//#define FRAME_GRID_ROWS 64
+
 // Optmized for 640 * 480, e.g. TUM RGBD & NUIM & EuRoC
-#define FRAME_GRID_ROWS 48
 #define FRAME_GRID_COLS 64
+#define FRAME_GRID_ROWS 48
 
 // Optimzied for 512 * 512, e.g. TUM VI
-//#define FRAME_GRID_ROWS 64
 //#define FRAME_GRID_COLS 64
+//#define FRAME_GRID_ROWS 64
+
+  
+/* --- options of query descriptor sampling --- */
+#define BUCKET_WIDTH                	50
+#define BUCKET_HEIGHT               	50
+#define BUCKET_MIN_FEATURES_PER_GRID    1
+
 
 class MapPoint;
 class KeyFrame;
+
+struct Grid
+{
+    Grid()
+    {
+        matched_size = 0;
+        kp_unmatched_indices.clear();
+    }
+    unsigned int matched_size;
+    std::vector<unsigned int> kp_unmatched_indices;
+};
 
 class Frame
 {
@@ -74,13 +107,21 @@ public:
           const float &bf, const float &thDepth);
 
     // Constructor for stereo cameras.
-    Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
+    Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp,
+          ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K,
+          cv::Mat &distCoef, const float &bf, const float &thDepth);
 
     // Constructor for RGB-D cameras.
-    Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
+    Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp,
+          ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K,
+          cv::Mat &distCoef, const float &bf, const float &thDepth);
 
     // Constructor for Monocular cameras.
-    Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
+    Frame(const cv::Mat &imGray, const double &timeStamp,
+          ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K,
+          cv::Mat &distCoef, const float &bf, const float &thDepth);
+
+    ~Frame() {};
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(int flag, const cv::Mat &im);
@@ -186,6 +227,9 @@ public:
 
     int ComputeStereoMatches_Undistorted(bool isOnline = false);
 
+    int ComputeStereoMatches_Undistorted_ByBucketing(bool isOnline = false);
+    static void GetUnMatchedKPbyBucketing(const Frame *pFrame, std::vector<unsigned int> &vUnMatchedKeyPoints);
+
     // Associate a "right" coordinate to a keypoint if there is valid depth in the depthmap.
     void ComputeStereoFromRGBD(const cv::Mat &imDepth);
 
@@ -273,7 +317,7 @@ public:
 
     std::vector<bool> mvbCandidate;
 
-    std::vector<bool> mvbJacobBuilt;
+  //  std::vector<bool> mvbJacobBuilt;
 
     //
     std::vector<bool> mvbGoodFeature;

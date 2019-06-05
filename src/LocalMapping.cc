@@ -25,7 +25,7 @@
 #include "ORBmatcher.h"
 #include "Optimizer.h"
 
-#include<mutex>
+#include <mutex>
 
 namespace ORB_SLAM2
 {
@@ -34,6 +34,7 @@ LocalMapping::LocalMapping(Map *pMap, const float bMonocular):
     mbMonocular(bMonocular), mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
     mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true)
 {
+    mBATimeLog.clear();
 }
 
 void LocalMapping::SetLoopCloser(LoopClosing* pLoopCloser)
@@ -41,14 +42,28 @@ void LocalMapping::SetLoopCloser(LoopClosing* pLoopCloser)
     mpLoopCloser = pLoopCloser;
 }
 
+void LocalMapping::SetHashHandler(HASHING::MultiIndexHashing *pHashHandler)
+{
+    mpHashMethod = pHashHandler;
+}
+
 void LocalMapping::SetTracker(Tracking *pTracker)
 {
     mpTracker=pTracker;
 }
 
+void LocalMapping::SetRealTimeFileStream(string fNameRealTimeBA)
+{
+    f_realTimeBA.open(fNameRealTimeBA.c_str());
+    f_realTimeBA << fixed;
+    f_realTimeBA << "#TimeStamp NumKF [IDs] NumFixF [IDs]" << std::endl;
+}
+
+
 void LocalMapping::Run()
 {
-
+    //
+    arma::wall_clock timer;
     mbFinished = false;
 
     while(1)
@@ -57,16 +72,39 @@ void LocalMapping::Run()
         SetAcceptKeyFrames(false);
 
         // Check if there are keyframes in the queue
-        if(CheckNewKeyFrames())
+        bool bNeedNewKeyFrames = CheckNewKeyFrames();
+        if(bNeedNewKeyFrames)
         {
+
+#ifdef LOCAL_BA_TIME_LOGGING
+            logCurrentKeyFrame.setNaN();
+            logCurrentKeyFrame.frame_time_stamp = mlNewKeyFrames.front()->mTimeStamp;
+            //
+            timer.tic();
+#endif
             // BoW conversion and insertion in Map
             ProcessNewKeyFrame();
+
+#ifdef LOCAL_BA_TIME_LOGGING
+            logCurrentKeyFrame.time_proc_new_keyframe = timer.toc();
+            timer.tic();
+#endif
 
             // Check recent MapPoints
             MapPointCulling();
 
+#ifdef LOCAL_BA_TIME_LOGGING
+            logCurrentKeyFrame.time_culling = timer.toc();
+            timer.tic();
+#endif
+
             // Triangulate new MapPoints
             CreateNewMapPoints();
+
+#ifdef LOCAL_BA_TIME_LOGGING
+            logCurrentKeyFrame.time_tri_new_map_point = timer.toc();
+            timer.tic();
+#endif
 
             if(!CheckNewKeyFrames())
             {
@@ -74,25 +112,93 @@ void LocalMapping::Run()
                 SearchInNeighbors();
             }
 
+#ifdef LOCAL_BA_TIME_LOGGING
+            logCurrentKeyFrame.time_srh_more_neighbor = timer.toc();
+#endif
+
             mbAbortBA = false;
 
             if(!CheckNewKeyFrames() && !stopRequested())
             {
                 // Local BA
-                if(mpMap->KeyFramesInMap()>2)
-                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpMap);
+                if(mpMap->KeyFramesInMap()>2) {
+#ifdef LOCAL_BA_TIME_LOGGING
+                    // logCurrentKeyFrame.time_srh_more_neighbor = timer.toc();
+                    timer.tic();
+#endif
 
+#ifdef LOGGING_KF_LIST
+                    // Local BA & export the logged kf list
+                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpMap, mvKeyFrameList, mvFixedFrameList);
+                    //
+                    f_realTimeBA << setprecision(6) << mpCurrentKeyFrame->mTimeStamp << endl;
+                    f_realTimeBA << setprecision(7) << mvKeyFrameList.size();
+                    for (int i=0; i<mvKeyFrameList.size(); ++i)
+                        f_realTimeBA << " " << mvKeyFrameList[i];
+                    f_realTimeBA << endl;
+                    //
+                    f_realTimeBA << mvFixedFrameList.size();
+                    for (int i=0; i<mvFixedFrameList.size(); ++i)
+                        f_realTimeBA << " " << mvFixedFrameList[i];
+                    f_realTimeBA << endl;
+#else
+                    // Local BA
+                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
+                                                     logCurrentKeyFrame.num_fixed_KF, logCurrentKeyFrame.num_free_KF,
+                                                     logCurrentKeyFrame.num_Point);
+#endif
+
+#ifdef LOCAL_BA_TIME_LOGGING
+                    logCurrentKeyFrame.time_local_BA = timer.toc();
+#endif
+                }
+
+
+#ifdef LOCAL_BA_TIME_LOGGING
+            timer.tic();
+#endif
+ 
                 // Check redundant local Keyframes
                 KeyFrameCulling();
+
+#ifdef LOCAL_BA_TIME_LOGGING
+            logCurrentKeyFrame.time_culling = timer.toc();
+#endif
             }
 
             mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+
+#ifdef LOCAL_BA_TIME_LOGGING
+            mBATimeLog.push_back(logCurrentKeyFrame);
+#endif
+
+#ifdef LOCAL_SEARCH_USING_HASHING
+            std::vector<MapPoint*> vpBuckUpMapPoints;
+            mpTracker->RestoreLocalMapPoints(vpBuckUpMapPoints);
+            UpdateHashTables(vpBuckUpMapPoints);
+#endif
         }
-        else if(Stop())
+
+/*
+#ifdef LOCAL_SEARCH_USING_HASHING
+        if (NeedUpdateHashTables()){
+            mpTracker->UpdateHashTablesByCoVis();
+            mpTracker->UpdateHashTables(mvpNewAddedMapPoints);
+//
+            SetNeedUpdateHashTables(false);
+        }
+#endif
+*/
+        if(!bNeedNewKeyFrames && Stop())
         {
             // Safe area to stop
             while(isStopped() && !CheckFinish())
             {
+/*
+#ifdef LOCAL_SEARCH_USING_HASHING
+                mpTracker->UpdateHashTablesByCoVis();
+#endif
+*/
                 usleep(3000);
             }
             if(CheckFinish())
@@ -150,7 +256,10 @@ void LocalMapping::ProcessNewKeyFrame()
             {
                 if(!pMP->IsInKeyFrame(mpCurrentKeyFrame))
                 {
+//                    cout << "pMP.id: " << pMP->mnId << endl;
+//                    cout << "before add obs: " << pMP->GetReferenceKeyFrame() << endl;
                     pMP->AddObservation(mpCurrentKeyFrame, i);
+//                    cout << "after add obs: " << pMP->GetReferenceKeyFrame() << endl;
                     pMP->UpdateNormalAndDepth();
                     pMP->ComputeDistinctiveDescriptors();
                 }
@@ -251,7 +360,7 @@ void LocalMapping::CreateNewMapPoints()
         if(!mbMonocular)
         {
             if(baseline<pKF2->mb)
-            continue;
+                continue;
         }
         else
         {
@@ -341,7 +450,7 @@ void LocalMapping::CreateNewMapPoints()
             }
             else if(bStereo1 && cosParallaxStereo1<cosParallaxStereo2)
             {
-                x3D = mpCurrentKeyFrame->UnprojectStereo(idx1);                
+                x3D = mpCurrentKeyFrame->UnprojectStereo(idx1);
             }
             else if(bStereo2 && cosParallaxStereo2<cosParallaxStereo1)
             {
@@ -435,7 +544,7 @@ void LocalMapping::CreateNewMapPoints()
             // Triangulation is succesfull
             MapPoint* pMP = new MapPoint(x3D,mpCurrentKeyFrame,mpMap);
 
-            pMP->AddObservation(mpCurrentKeyFrame,idx1);            
+            pMP->AddObservation(mpCurrentKeyFrame,idx1);
             pMP->AddObservation(pKF2,idx2);
 
             mpCurrentKeyFrame->AddMapPoint(pMP,idx1);
@@ -447,6 +556,13 @@ void LocalMapping::CreateNewMapPoints()
 
             mpMap->AddMapPoint(pMP);
             mlpRecentAddedMapPoints.push_back(pMP);
+
+#ifdef LOCAL_SEARCH_USING_HASHING
+            arma::wall_clock timer11;
+            timer11.tic();
+            mpHashMethod->insert(pMP);
+            mpTracker->logCurrentFrame.time_hash_insert += timer11.toc();
+#endif
 
             nnew++;
         }
@@ -568,7 +684,7 @@ bool LocalMapping::Stop()
     if(mbStopRequested && !mbNotStop)
     {
         mbStopped = true;
-        cout << "Local Mapping STOP" << endl;
+        cout << fixed << setprecision(6) << mpTracker->logCurrentFrame.frame_time_stamp << ": Local Mapping STOP" << endl;
         return true;
     }
 
@@ -599,7 +715,7 @@ void LocalMapping::Release()
         delete *lit;
     mlNewKeyFrames.clear();
 
-    cout << "Local Mapping RELEASE" << endl;
+    cout << fixed << setprecision(6) << mpTracker->logCurrentFrame.frame_time_stamp << ": Local Mapping RELEASE" << endl;
 }
 
 bool LocalMapping::AcceptKeyFrames()
@@ -690,7 +806,7 @@ void LocalMapping::KeyFrameCulling()
                     }
                 }
             }
-        }  
+        }
 
         if(nRedundantObservations>0.9*nMPs)
             pKF->SetBadFlag();
@@ -748,7 +864,7 @@ bool LocalMapping::CheckFinish()
 void LocalMapping::SetFinish()
 {
     unique_lock<mutex> lock(mMutexFinish);
-    mbFinished = true;    
+    mbFinished = true;
     unique_lock<mutex> lock2(mMutexStop);
     mbStopped = true;
 }
@@ -758,5 +874,56 @@ bool LocalMapping::isFinished()
     unique_lock<mutex> lock(mMutexFinish);
     return mbFinished;
 }
+
+void LocalMapping::UpdateHashTables(std::vector<MapPoint *> &vpMPs)
+{
+    unique_lock<mutex> locker(mMutexUpdateHashTables);
+
+    arma::wall_clock timer;
+    timer.tic();
+    for(auto it=vpMPs.begin(), itend=vpMPs.end(); it!=itend; it++){
+        MapPoint* pMP = *it;
+        if(!pMP || pMP->isBad())
+            continue;
+
+        mpHashMethod->insert(*it);
+    }
+    mpTracker->logCurrentFrame.time_hash_insert += timer.toc();
+}
+
+//void LocalMapping::UpdateHashTables(std::vector<MapPoint *> &vpMPs)
+//{
+//    arma::wall_clock timer;
+//    timer.tic();
+//    for(auto it=vpMPs.begin(), itend=vpMPs.end(); it!=itend; it++){
+//        MapPoint* pMP = *it;
+//        if(!pMP || pMP->isBad())
+//            continue;
+
+//        mpHashMethod->insert(*it);
+//    }
+//    mpTracker->logCurrentFrame.time_hash_insert = timer.toc();
+//}
+
+//void LocalMapping::UpdateHashTables(std::list<MapPoint *> &vpMPs)
+//{
+//    //    if(mpHashMethod->NeedUpdateHashTables()){
+////    std::vector<MapPoint*> mvpCoviMPs;
+////    if(!mpTracker->BackupLocalMapPointsEmpty()){
+////        mpTracker->RestoreLocalMapPoints(mvpCoviMPs);
+//        arma::wall_clock timer;
+//        timer.tic();
+//        for(auto it=vpMPs.begin(), itend=vpMPs.end(); it!=itend; it++){
+//            MapPoint* pMP = *it;
+//            if(!pMP || pMP->isBad())
+//                continue;
+
+//            mpHashMethod->insert(*it);
+//        }
+//        mpTracker->logCurrentFrame.time_hash_insert = timer.toc();
+////    }
+//    //        mpHashMethod->setUpdateHashTables(false);
+//    //    }
+//}
 
 } //namespace ORB_SLAM

@@ -25,7 +25,11 @@
 #include <list>
 #include <opencv/cv.h>
 
-//#define CUDA_ACC_FAST
+// NOTE
+// for some reason the cuda fast only works on QVGA video;
+// with higher resolution inout, it will only extract fast 
+// from the top portion of the frame
+// #define CUDA_ACC_FAST
 
 #ifdef CUDA_ACC_FAST
     #include <opencv2/core/cuda.hpp>

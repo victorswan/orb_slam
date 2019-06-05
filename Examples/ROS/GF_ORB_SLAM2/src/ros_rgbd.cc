@@ -31,11 +31,20 @@
 #include <message_filters/sync_policies/approximate_time.h>
 
 #include <opencv2/core/core.hpp>
-#include "../../../include/System.h"
+#include "../../../../include/System.h"
+#include "../../../../include/MapPublisher.h"
 
+#include "nav_msgs/Odometry.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "tf/transform_datatypes.h"
 #include <tf/transform_broadcaster.h>
+
+//
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <ros/publisher.h>
+
+
+// #define MAP_PUBLISH
 
 
 using namespace std;
@@ -43,11 +52,27 @@ using namespace std;
 class ImageGrabber
 {
 public:
-    ImageGrabber(ORB_SLAM2::System* pSLAM):mpSLAM(pSLAM){}
+    ImageGrabber(ORB_SLAM2::System* pSLAM):mpSLAM(pSLAM){
+#ifdef MAP_PUBLISH
+      mnMapRefreshCounter = 0;
+#endif
+    }
 
     void GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::ImageConstPtr& msgD);
 
+    void GrabOdom(const nav_msgs::Odometry::ConstPtr& msg);
+
     ORB_SLAM2::System* mpSLAM;
+
+      double timeStamp;  
+  cv::Mat Tmat;
+
+    ros::Publisher mpCameraPosePublisher, mpCameraPoseInIMUPublisher;
+    
+#ifdef MAP_PUBLISH
+    size_t mnMapRefreshCounter;
+    ORB_SLAM2::MapPublisher* mpMapPub;
+#endif
 };
 
 int main(int argc, char **argv)
@@ -55,11 +80,11 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "RGBD");
     ros::start();
 
-    if(argc != 8)
+    if(argc != 9)
     {
         cerr << endl << "Usage: rosrun ORB_SLAM2 RGBD path_to_vocabulary path_to_settings budget_per_frame "
              << " do_viz "
-             << " topic_image_rgb topic_image_depth path_to_traj" << endl;
+             << " topic_image_rgb topic_image_depth path_to_traj path_to_map" << endl;
         ros::shutdown();
         return 1;
     }    
@@ -73,10 +98,17 @@ int main(int argc, char **argv)
 
     SLAM.SetBudgetPerFrame(std::atoi(argv[3]));
 
+#ifdef REALTIME_TRAJ_LOGGING
     std::string fNameRealTimeTrack = std::string(argv[7]) + "_AllFrameTrajectory.txt";
     std::cout << std::endl << "Saving AllFrame Trajectory to AllFrameTrajectory.txt" << std::endl;
     SLAM.SetRealTimeFileStream(fNameRealTimeTrack);
-
+#endif
+    
+#ifdef ENABLE_MAP_IO
+    SLAM.LoadMap(std::string(argv[8]));
+    SLAM.ForceRelocTracker();
+#endif
+    
     ImageGrabber igb(&SLAM);
 
     ros::NodeHandle nh;
@@ -89,6 +121,18 @@ int main(int argc, char **argv)
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub,depth_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabRGBD,&igb,_1,_2));
 
+//
+ros::Subscriber sub2 = nh.subscribe("/odom_sparse", 100, &ImageGrabber::GrabOdom, &igb);
+
+
+// TODO
+    // figure out the proper queue size
+igb.mpCameraPosePublisher = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("ORB_SLAM/camera_pose", 100);
+igb.mpCameraPoseInIMUPublisher = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("ORB_SLAM/camera_pose_in_imu", 100);
+#ifdef MAP_PUBLISH
+igb.mpMapPub = new ORB_SLAM2::MapPublisher(SLAM.mpMap);
+#endif
+
 while(ros::ok()) 
     ros::spin();
     // ros::spin();
@@ -98,6 +142,17 @@ while(ros::ok())
     // Save camera trajectory
     SLAM.SaveKeyFrameTrajectoryTUM( std::string(argv[7]) + "_KeyFrameTrajectory.txt" );
     SLAM.SaveTrackingLog( std::string(argv[7]) + "_Log.txt" );
+#ifdef LOCAL_BA_TIME_LOGGING
+    SLAM.SaveMappingLog( std::string(argv[7]) + "_Log_Mapping.txt" );
+#endif
+
+/*
+#ifdef ENABLE_MAP_IO
+   
+   SLAM.SaveMap(std::string(argv[8]));
+   // SLAM.SaveMap(std::string(argv[7]) + "_Map/");
+#endif
+*/
 
     std::cout << "Finished saving!" << std::endl;
 
@@ -112,8 +167,33 @@ while(ros::ok())
     return 0;
 }
 
-void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::ImageConstPtr& msgD)
+void ImageGrabber::GrabOdom(const nav_msgs::Odometry::ConstPtr& msg) {
+  /*
+  ROS_INFO("Seq: [%d]", msg->header.seq);
+  ROS_INFO("Position-> x: [%f], y: [%f], z: [%f]", msg->pose.pose.position.x,msg->pose.pose.position.y, msg->pose.pose.position.z);
+  ROS_INFO("Orientation-> x: [%f], y: [%f], z: [%f], w: [%f]", msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
+  ROS_INFO("Vel-> Linear: [%f], Angular: [%f]", msg->twist.twist.linear.x,msg->twist.twist.angular.z);
+  */
+  
+  // TODO
+  timeStamp = msg->header.stamp.toSec();
+  
+  mpSLAM->mpTracker->BufferingOdom(
+    timeStamp, 
+    msg->pose.pose.position.x, 
+    msg->pose.pose.position.y, 
+    msg->pose.pose.position.z, 
+    msg->pose.pose.orientation.w, 
+                msg->pose.pose.orientation.x, 
+                msg->pose.pose.orientation.y, 
+                msg->pose.pose.orientation.z
+  );
+}
+
+void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB, const sensor_msgs::ImageConstPtr& msgD)
 {
+
+double latency_trans = ros::Time::now().toSec() - msgRGB->header.stamp.toSec();
     // Copy the ros image message to cv::Mat.
     cv_bridge::CvImageConstPtr cv_ptrRGB;
     try
@@ -142,7 +222,14 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
     if (pose.empty())
         return;
 
-    /* global left handed coordinate system */
+
+double latency_total = ros::Time::now().toSec() - cv_ptrRGB->header.stamp.toSec();
+// ROS_INFO("ORB-SLAM Tracking Latency: %.03f sec", ros::Time::now().toSec() - cv_ptrLeft->header.stamp.toSec());
+// ROS_INFO("Image Transmision Latency: %.03f sec; Total Tracking Latency: %.03f sec", latency_trans, latency_total);
+ROS_INFO("Pose Tracking Latency: %.03f sec", latency_total - latency_trans);
+
+    /*
+    // global left handed coordinate system 
     static cv::Mat pose_prev = cv::Mat::eye(4,4, CV_32F);
     static cv::Mat world_lh = cv::Mat::eye(4,4, CV_32F);
     // matrix to flip signs of sinus in rotation matrix, not sure why we need to do that
@@ -157,7 +244,7 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
     pose_prev = pose.clone();
 
 
-    /* transform into global right handed coordinate system, publish in ROS*/
+    // transform into global right handed coordinate system, publish in ROS
     tf::Matrix3x3 cameraRotation_rh(  - world_lh.at<float>(0,0),   world_lh.at<float>(0,1),   world_lh.at<float>(0,2),
                                   - world_lh.at<float>(1,0),   world_lh.at<float>(1,1),   world_lh.at<float>(1,2),
                                     world_lh.at<float>(2,0), - world_lh.at<float>(2,1), - world_lh.at<float>(2,2));
@@ -168,13 +255,107 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
     const tf::Matrix3x3 rotation270degXZ(   0, 1, 0,
                                             0, 0, 1,
                                             1, 0, 0);
-
+    
     static tf::TransformBroadcaster br;
 
     tf::Matrix3x3 globalRotation_rh = cameraRotation_rh * rotation270degXZ;
     tf::Vector3 globalTranslation_rh = cameraTranslation_rh * rotation270degXZ;
     tf::Transform transform = tf::Transform(globalRotation_rh, globalTranslation_rh);
-    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_link", "camera_pose"));
+    br.sendTransform(tf::StampedTransform(transform, cv_ptrRGB->header.stamp, "map", "camera_pose"));
+*/
+    
+/// broadcast campose pose message
+    // camera pose
+ /*
+         tf::Matrix3x3 R( 0,  0,  1,
+                        -1,  0,  0,
+                         0, -1,  0);
+         tf::Transform T ( R * tf::Matrix3x3( transform.getRotation() ), R * transform.getOrigin() );
+  */
+ 
+        cv::Mat Rwc = pose.rowRange(0,3).colRange(0,3).t();
+        cv::Mat twc = -Rwc*pose.rowRange(0,3).col(3);
+        tf::Matrix3x3 M(Rwc.at<float>(0,0),Rwc.at<float>(0,1),Rwc.at<float>(0,2),
+                        Rwc.at<float>(1,0),Rwc.at<float>(1,1),Rwc.at<float>(1,2),
+                        Rwc.at<float>(2,0),Rwc.at<float>(2,1),Rwc.at<float>(2,2));
+        tf::Vector3 V(twc.at<float>(0), twc.at<float>(1), twc.at<float>(2));
+
+        tf::Transform tfTcw(M,V);
+	geometry_msgs::Transform gmTwc;
+        tf::transformTFToMsg(tfTcw, gmTwc);
+        
+        geometry_msgs::Pose camera_pose;
+        camera_pose.position.x = gmTwc.translation.x;
+        camera_pose.position.y = gmTwc.translation.y;
+        camera_pose.position.z = gmTwc.translation.z;
+        camera_pose.orientation = gmTwc.rotation;
+	
+	geometry_msgs::PoseWithCovarianceStamped camera_odom;
+        camera_odom.header.frame_id = "map";
+        camera_odom.header.stamp = cv_ptrRGB->header.stamp;
+        camera_odom.pose.pose = camera_pose;
+    
+        mpCameraPosePublisher.publish(camera_odom);
+
+//
+// by default, an additional transform is applied to make camera pose and body frame aligned
+// which is assumed in msf
+#ifdef INIT_WITH_ARUCHO
+	tf::Matrix3x3 Ric(   0, -1, 0,
+                             0, 0, -1,
+                             1, 0, 0);
+/*	tf::Matrix3x3 Ric(   0, 0, 1,
+                             -1, 0, 0,
+                             0, -1, 0);*/
+        tf::Transform tfTiw ( tf::Matrix3x3( tfTcw.getRotation() ) * Ric, tfTcw.getOrigin() );
+#else
+	tf::Matrix3x3 Ric( 0,  0,  1,
+                         -1,  0,  0,
+                         0,  -1,  0);
+       tf::Transform tfTiw ( Ric * tf::Matrix3x3( tfTcw.getRotation() ), Ric * tfTcw.getOrigin() );
+#endif
+
+	geometry_msgs::Transform gmTwi;
+        tf::transformTFToMsg(tfTiw, gmTwi);
+        
+        geometry_msgs::Pose camera_pose_in_imu;
+        camera_pose_in_imu.position.x = gmTwi.translation.x;
+        camera_pose_in_imu.position.y = gmTwi.translation.y;
+        camera_pose_in_imu.position.z = gmTwi.translation.z;
+        camera_pose_in_imu.orientation = gmTwi.rotation;
+	
+	geometry_msgs::PoseWithCovarianceStamped camera_odom_in_imu;
+        camera_odom_in_imu.header.frame_id = "map";
+        camera_odom_in_imu.header.stamp = cv_ptrRGB->header.stamp;
+        camera_odom_in_imu.pose.pose = camera_pose_in_imu;
+	
+        mpCameraPoseInIMUPublisher.publish(camera_odom_in_imu);
+
+	
+	/*
+   geometry_msgs::Transform gmTwc;
+   tf::transformTFToMsg(transform, gmTwc);
+        
+    geometry_msgs::Pose camera_pose;
+        camera_pose.position.x = gmTwc.translation.x;
+        camera_pose.position.y = gmTwc.translation.y;
+        camera_pose.position.z = gmTwc.translation.z;
+        camera_pose.orientation = gmTwc.rotation;
+        
+    geometry_msgs::PoseWithCovarianceStamped camera_odom;
+     camera_odom.header.frame_id = "map";
+        camera_odom.header.stamp = cv_ptrRGB->header.stamp;
+        camera_odom.pose.pose = camera_pose;
+    
+      mpCameraPosePublisher.publish(camera_odom);
+*/
+#ifdef MAP_PUBLISH
+if (mnMapRefreshCounter % 30 == 1) {
+	// publish map points
+	mpMapPub->Refresh();
+}
+mnMapRefreshCounter ++;
+#endif
 }
 
 

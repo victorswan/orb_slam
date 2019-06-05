@@ -5,31 +5,22 @@ import subprocess
 import time
 import signal
 
-SeqStartTime = [600, 0]
-SeqDuration = [967, 1200]
-SeqNameList = ['2014-07-14-15-16-36', '2014-11-18-13-20-12'];
-# SeqStartTime = [600, 0, 900]
-# SeqDuration = [967, 1200, 3000]
-# SeqNameList = ['2014-07-14-15-16-36', '2014-11-18-13-20-12', '2014-12-05-11-09-10'];
-# SeqStartTime = [360] # [150]
+SeqStartTime = [600, 0, 900]
+SeqDuration = [3000, 1200, 3000]
+SeqNameList = ['2014-07-14-15-16-36', '2014-11-18-13-20-12', '2014-12-05-11-09-10'];
+# SeqStartTime = [0]
 # SeqDuration = [1200]
 # SeqNameList = ['2014-11-18-13-20-12'];
-# SeqStartTime = [600]
-# SeqDuration = [967]
-# SeqNameList = ['2014-07-14-15-16-36'];
-# SeqStartTime = [900]
-# SeqDuration = [3000]
-# SeqNameList = ['2014-12-05-11-09-10'];
+# SeqStartTime = [600, 900]
+# SeqDuration = [3000, 3000]
+# SeqNameList = ['2014-07-14-15-16-36', '2014-12-05-11-09-10'];
 
-# Result_root = '/mnt/DATA/tmp/RobotCar/ORBv2_Baseline_SlowMo/'
-# Result_root = '/mnt/DATA/tmp/RobotCar/ORBv2_TRO_Baseline/'
-Result_root = '/mnt/DATA/tmp/RobotCar/lmk1500/GF_Stereo/'
+Result_root = '/mnt/DATA/tmp/RobotCar/ORBv2_Baseline_SlowMo/'
+# Result_root = '/mnt/DATA/tmp/RobotCar/ORBv2_Baseline/'
 
-Number_GF_List = [130, 160, 200, 240, 280]; # [80, 100, 120]; # [240]; # 
-# Number_GF_List = [1000, 1500, 2000]; #  [1500] # 
-
-Num_Repeating = 10 # 5 # 1 # 
-
+# Number_GF_List = [60, 80, 100, 130, 160, 200, 240]; # [80, 100, 120]; # 
+Number_GF_List = [1500] # [1000, 1500, 2000]; #  
+Num_Repeating = 1 # 10 # 50 # 20 #  3 # 5 # 
 SleepTime = 1 # 10 # 25
 
 config_path = '/home/yipuzhao/ros_workspace/package_dir/ORB_Data'
@@ -63,7 +54,7 @@ for ri, num_gf in enumerate(Number_GF_List):
             print bcolors.ALERT + "Round: " + str(iteration + 1) + "; Seq: " + SeqName
 
             # File_Setting = config_path + '/Oxford_Robocar_yaml/Bumblebee_stereo_lmk' + str(num_gf) + '.yaml'
-            File_Setting = config_path + '/Oxford_Robocar_yaml/Bumblebee_stereo_rescale_lmk1500.yaml'
+            File_Setting = config_path + '/Oxford_Robocar_yaml/Bumblebee_stereo_rescale_lmk' + str(num_gf) + '.yaml'
 
             # File_Vocab = config_path + '/ORBvoc.txt'
             File_Vocab = config_path + '/ORBvoc.bin'
@@ -71,15 +62,15 @@ for ri, num_gf in enumerate(Number_GF_List):
             File_traj = Experiment_dir + '/' + SeqName
             
             # do viz
-            # cmd_slam   = str('rosrun GF_ORB_SLAM2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf*2)) + ' false true /left_rect/image_raw_balanced /right_rect/image_raw_balanced ' + File_traj)
+            # cmd_slam   = str('rosrun gf_orb_slam2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf*2)) + ' false true /left_rect/image_raw_balanced /right_rect/image_raw_balanced ' + File_traj)
             # no viz
-            # cmd_slam   = str('rosrun GF_ORB_SLAM2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf*2)) + ' false false /left_rect/image_raw_balanced /right_rect/image_raw_balanced ' + File_traj)
+            # cmd_slam   = str('rosrun gf_orb_slam2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf*2)) + ' false false /left_rect/image_raw_balanced /right_rect/image_raw_balanced ' + File_traj)
            
             # do viz
-            # cmd_slam   = str('rosrun GF_ORB_SLAM2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf*2)) + ' false true /left_rect/image_raw /right_rect/image_raw ' + File_traj)
+            cmd_slam   = str('rosrun gf_orb_slam2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf*2)) + ' false true /left_rect/image_raw /right_rect/image_raw ' + File_traj)
             # no viz
-            cmd_slam   = str('rosrun GF_ORB_SLAM2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf*2)) + ' false false /left_rect/image_raw /right_rect/image_raw ' + File_traj)
-            cmd_rosbag = 'rosbag play ' + File_rosbag + ' -s ' + str(SeqStartTime[sn]) + ' -u ' + str(SeqDuration[sn]) # + ' -r 0.3' # + ' -s 17' #
+            # cmd_slam   = str('rosrun gf_orb_slam2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf*2)) + ' false false /left_rect/image_raw /right_rect/image_raw ' + File_traj)
+            cmd_rosbag = 'rosbag play ' + File_rosbag + ' -s ' + str(SeqStartTime[sn]) + ' -u ' + str(SeqDuration[sn]) + ' -r 0.3' # + ' -s 17' #
 
             print bcolors.WARNING + "cmd_slam: \n"   + cmd_slam   + bcolors.ENDC
             print bcolors.WARNING + "cmd_rosbag: \n" + cmd_rosbag + bcolors.ENDC

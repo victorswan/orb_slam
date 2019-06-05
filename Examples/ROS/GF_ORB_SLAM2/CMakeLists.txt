@@ -1,14 +1,19 @@
 cmake_minimum_required(VERSION 2.4.6)
-include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+project(gf_orb_slam2)
 
-rosbuild_init()
+find_package(catkin REQUIRED COMPONENTS
+	roscpp
+	sensor_msgs
+	cv_bridge
+	image_transport
+	tf
+	)
 
-SET(ROS_BUILD_TYPE Release)
-# IF(NOT ROS_BUILD_TYPE)
-#  SET(ROS_BUILD_TYPE Release)
-# ENDIF()
+IF(NOT CMAKE_BUILD_TYPE)
+  SET(CMAKE_BUILD_TYPE Release)
+ENDIF()
 
-MESSAGE("Build type: " ${ROS_BUILD_TYPE})
+MESSAGE("Build type: " ${CMAKE_BUILD_TYPE})
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wl,--no-as-needed -pthread  -Wall  -O3 -march=native ")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -pthread  -Wall  -O3 -march=native")
@@ -31,26 +36,25 @@ endif()
 
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../../cmake_modules)
 
-# customize opencv dir
- if ($ENV{ROS_DISTRO} STREQUAL "indigo")
-     set( OpenCV_DIR /opt/opencv2/share/OpenCV )
-     find_package(OpenCV 2.4.13 REQUIRED core ocl)
- elseif ($ENV{ROS_DISTRO} STREQUAL "kinetic")
-     # set( OpenCV_DIR /opt/opencv-3.4.1/share/OpenCV )
-     set( OpenCV_DIR /opt/opencv3/share/OpenCV )
-     find_package(OpenCV 3.4.0 REQUIRED)
- endif()
-# set( OpenCV_DIR /opt/opencv3/share/OpenCV )
-# find_package(OpenCV 3.4.0 REQUIRED)
+# # customize opencv dir
+# if ($ENV{ROS_DISTRO} STREQUAL "indigo")
+#     set( OpenCV_DIR /opt/opencv2/share/OpenCV )
+#     find_package(OpenCV 2.4.13 REQUIRED core ocl)
+# elseif ($ENV{ROS_DISTRO} STREQUAL "kinetic")
+#     set( OpenCV_DIR /opt/opencv3/share/OpenCV )
+#     find_package(OpenCV 3.4.1 REQUIRED
+#                PATHS /opt/opencv3
+#                NO_DEFAULT_PATH)
+# endif()
 
-# find_package(Eigen3 3.1.0 REQUIRED)
-set( EIGEN3_INCLUDE_DIR /usr/include/eigen3 )
+find_package(Eigen3 3.1.0 REQUIRED)
+# set( EIGEN3_INCLUDE_DIR /usr/include/eigen3 )
 MESSAGE("EIGEN include dir: " ${EIGEN3_INCLUDE_DIR})
 
 # set( Pangolin_DIR /opt/Pangolin/lib/cmake/Pangolin/ )
-# find_package(Pangolin REQUIRED)
-set(Pangolin_INCLUDE_DIRS /opt/Pangolin/include/)
-set(Pangolin_LIBRARIES /opt/Pangolin/lib/libpangolin.so)
+find_package(Pangolin REQUIRED)
+# set(Pangolin_INCLUDE_DIRS /opt/Pangolin/include/)
+# set(Pangolin_LIBRARIES /opt/Pangolin/lib/libpangolin.so)
 MESSAGE("Pangolin include dir: " ${Pangolin_INCLUDE_DIRS})
 
 # customize openblas dir
@@ -69,6 +73,7 @@ ${PROJECT_SOURCE_DIR}/../../../include
 ${EIGEN3_INCLUDE_DIR}
 ${Pangolin_INCLUDE_DIRS}
 ${ARMADILLO_INCLUDE_DIR}
+${catkin_INCLUDE_DIRS}
 )
 
 set(LIBS 
@@ -82,11 +87,12 @@ ${OpenBLAS_LIBRARIES}
 ${ARMADILLO_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/../../../Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/../../../Thirdparty/g2o/lib/libg2o.so
-${PROJECT_SOURCE_DIR}/../../../lib/libGF_ORB_SLAM2.so
+${PROJECT_SOURCE_DIR}/../../../lib/libgf_orb_slam2.so
+${catkin_LIBRARIES}
 )
 
 # Node for monocular camera
-rosbuild_add_executable(Mono
+add_executable(Mono
 src/ros_mono.cc
 )
 
@@ -95,7 +101,7 @@ ${LIBS}
 )
 
 # Node for monocular camera (Augmented Reality Demo)
-rosbuild_add_executable(MonoAR
+add_executable(MonoAR
 src/AR/ros_mono_ar.cc
 src/AR/ViewerAR.h
 src/AR/ViewerAR.cc
@@ -106,7 +112,7 @@ ${LIBS}
 )
 
 # Node for stereo camera
-rosbuild_add_executable(Stereo
+add_executable(Stereo
 src/ros_stereo.cc
 )
 
@@ -115,7 +121,7 @@ ${LIBS}
 )
 
 # Node for RGB-D camera
-rosbuild_add_executable(RGBD
+add_executable(RGBD
 src/ros_rgbd.cc
 )
 

@@ -21,9 +21,10 @@
 #ifndef MAPPOINT_H
 #define MAPPOINT_H
 
-#include"KeyFrame.h"
-#include"Frame.h"
-#include"Map.h"
+#include "KeyFrame.h"
+#include "Frame.h"
+#include "Map.h"
+#include "Hashing.h"
 
 #define ARMA_NO_DEBUG
 #include "armadillo"
@@ -45,6 +46,14 @@ public:
     MapPoint(const cv::Mat &Pos, KeyFrame* pRefKF, Map* pMap);
     MapPoint(const cv::Mat &Pos,  Map* pMap, Frame* pFrame, const int &idxF);
 
+    MapPoint(cv::FileStorage & fs, Map *pMap);
+
+    void ExportToYML(cv::FileStorage & fs);
+
+    static bool isLessID(MapPoint* pMP1, MapPoint* pMP2){
+        return pMP1->mnId < pMP2->mnId;
+    }
+
     // for unit test only; not used in actual application
     MapPoint() {};
 
@@ -53,6 +62,9 @@ public:
 
     cv::Mat GetNormal();
     KeyFrame* GetReferenceKeyFrame();
+
+    //
+    void SetReferenceKeyFrame(KeyFrame * mRKF);
 
     std::map<KeyFrame*,size_t> GetObservations();
     int Observations();
@@ -138,6 +150,19 @@ public:
     long unsigned int mnUsedForLocalMap;
 
     static std::mutex mGlobalMutex;
+
+
+    long unsigned int mnIdCoVisible;
+    long unsigned int mnIdMapHashed;
+    long unsigned int mnIdSelected;
+    long unsigned int mnIdRelocalized;
+    long unsigned int mnIdLoopClosure;
+    std::vector<bool> mvbActiveHashTables;
+    std::vector<bool> mvbHashed;
+//    std::vector<bool> mvbQueried;
+    int mnIdCandidates;
+    int mnQueriedScore;
+//    bool queriedByHashing;
 
 protected:    
 

@@ -24,6 +24,8 @@ Num_Repeating = 3 # 5 # 10 # 20 #
 
 SleepTime = 2 # 10 # 25
 
+config_path = '/home/yipuzhao/ros_workspace/package_dir/ORB_Data'
+
 #----------------------------------------------------------------------------------------------------------------------
 class bcolors:
     HEADER = '\033[95m'
@@ -52,17 +54,17 @@ for sn, sname in enumerate(SeqNameList):
             SeqName = SeqNameList[sn]
             print bcolors.ALERT + "Round: " + str(iteration + 1) + "; Seq: " + SeqName
 
-            File_Setting = '../ORB_Data/XWing_yaml/eo_' + CamList[sn] + '.yaml'
+            File_Setting = config_path + '/XWing_yaml/eo_' + CamList[sn] + '.yaml'
 
-            File_Vocab = '../ORB_Data/ORBvoc.bin'
+            File_Vocab = config_path + '/ORBvoc.bin'
             File_rosbag  = '/media/yipuzhao/651A6DA035A51611/' + SeqName + '.bag'
             
             File_traj = Experiment_dir + '/' + SeqName
 
             # enable viz
-            cmd_slam   = str('rosrun ORB_SLAM2 Mono ' + File_Vocab + ' ' + File_Setting + ' '  + str(int(Number_GF_List[ri])) + ' true /' + CamList[sn] + '_cam/image_raw ' + File_traj)
+            cmd_slam   = str('rosrun gf_orb_slam2 Mono ' + File_Vocab + ' ' + File_Setting + ' '  + str(int(Number_GF_List[ri]*2)) + ' true /' + CamList[sn] + '_cam/image_raw ' + File_traj)
             # disable viz
-            # cmd_slam   = str('rosrun ORB_SLAM2 Mono ' + File_Vocab + ' ' + File_Setting + ' '  + str(int(Number_GF_List[ri])) + ' false /' + CamList[sn] + '_cam/image_raw ' + File_traj)
+            # cmd_slam   = str('rosrun gf_orb_slam2 Mono ' + File_Vocab + ' ' + File_Setting + ' '  + str(int(Number_GF_List[ri]*2)) + ' false /' + CamList[sn] + '_cam/image_raw ' + File_traj)
             cmd_rosbag = 'rosbag play ' + File_rosbag + ' -s 780' # + ' -r 0.2'
             
             print bcolors.WARNING + "cmd_slam: \n"   + cmd_slam   + bcolors.ENDC

@@ -1,25 +1,3 @@
-/**
-* This file is part of GF-ORB-SLAM2.
-*
-* Copyright (C) 2019 Yipu Zhao <yipu dot zhao at gatech dot edu> 
-* (Georgia Institute of Technology)
-* For more information see 
-* <https://sites.google.com/site/zhaoyipu/good-feature-visual-slam>
-*
-* GF-ORB-SLAM2 is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* GF-ORB-SLAM is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with GF-ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #ifndef OBSERVABILITY_H
 #define OBSERVABILITY_H
 
@@ -214,6 +192,10 @@ public:
         time_Selection = 0;
     }
 
+    ~Observability() {
+	   if (mNumThreads > 1)
+           delete [] mThreads;
+    }
 
     // ============================ Kinematic func =============================
 
@@ -636,30 +618,12 @@ public:
     void compute_SOM_In_Segment(const size_t seg_idx, const arma::mat Y, const arma::mat Z,
                                 arma::mat & curObsMat);
 
-    // ============================ Subset selection func =============================
-
-    bool setSelction_Ratio(const double ratio_good_inlier,
-                           const int greedy_mtd,
-                           Frame *pFrame, vector<GoodPoint> *mpVec);
-    //
-    bool setSelction_Number(const size_t num_good_inlier,
-                            const int greedy_mtd,
-                            const double time_for_select,
-                            const double error_bound,
-                            Frame *pFrame, vector<GoodPoint> *mpVec);
-
-    bool setSelction_Number(const size_t num_good_inlier,
-                            const int greedy_mtd,
-                            const double time_for_select,
-                            std::vector<MapPoint*> * mapPoints,
-                            vector<GoodPoint> *mpVec);
 
     // ============================ Active matching func =============================
 
     int runActiveMapMatching(Frame *pFrame,
                              const size_t mat_type,
-                             arma::mat &mBaseInfoMat,
-//                             const arma::mat &mBaseInfoMat,
+                             const arma::mat &mBaseInfoMat,
                              const float th, ORBmatcher &mORBMatcher,
                              const int num_to_match, const double time_for_match );
 
@@ -669,52 +633,6 @@ public:
                                ORBmatcher &mORBMatcher,
                                const int num_to_match,
                                const double time_for_match );
-
-    //
-
-    void maxVolSubset_Full(vector<GoodPoint> *mpVec, vector<GoodPoint> *subVec, const size_t mpLimit);
-
-    void maxVolSubset_Orig(vector<GoodPoint> *mpVec, vector<GoodPoint> *subVec, const size_t mpLimit);
-
-    //
-    void maxVolSelection_BaselineGreedy(vector<GoodPoint> *subVec, const size_t mpLimit);
-
-    bool maxVolSelection_LazierGreedy(const size_t stIdx, const size_t edIdx,
-                                      vector<GoodPoint> *subVec, const size_t mpLimit,
-                                      const double sampleScale,
-                                      const double max_time_for_select);
-
-    bool maxVolSelection_GroupedGreedy(const size_t stIdx, const size_t edIdx,
-                                       vector<GoodPoint> *subVec, const size_t mpLimit,
-                                       const double sampleScale,
-                                       const double max_time_for_select);
-
-    void maxVolDeletion_BaselineGreedy(vector<GoodPoint> *mpVec, vector<GoodPoint> *subVec, const size_t mpLimit);
-
-    bool maxVolDeletion_LazierGreedy(const size_t stIdx, const size_t edIdx,
-                                     vector<GoodPoint> *subVec, const size_t mpLimit,
-                                     const double sampleScale,
-                                     const double max_time_for_select);
-
-    bool maxVolDeletion_GroupedGreedy(const size_t stIdx, const size_t edIdx,
-                                     vector<GoodPoint> *subVec, const size_t mpLimit,
-                                     const double sampleScale,
-                                     const double max_time_for_select);
-
-    bool maxVolAutomatic_LazierGreedy(const size_t stIdx, const size_t edIdx,
-                                      vector<GoodPoint> *subVec, const size_t mpLimit,
-                                      const double sampleScale,
-                                      const double max_time_for_select);
-
-    bool maxVolAutomatic_GroupedGreedy(const size_t stIdx, const size_t edIdx,
-                                      vector<GoodPoint> *subVec, const size_t mpLimit,
-                                      const double sampleScale,
-                                      const double max_time_for_select);
-
-    // multi-thread enhancement of lazier greedy
-    void maxVolSelection_Greedy_mt(vector<GoodPoint> *mpVec, vector<GoodPoint> *subVec, const size_t mpLimit);
-    void maxVolDeletion_Greedy_mt(vector<GoodPoint> *mpVec, vector<GoodPoint> *subVec, const size_t mpLimit);
-    void batchSearchMaxEntry( const vector<GoodPoint> * lmkVec, const size_t stIdx, const size_t edIdx, const size_t resIdx );
 
     // private:
 

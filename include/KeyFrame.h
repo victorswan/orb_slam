@@ -45,6 +45,13 @@ class KeyFrame
 public:
     KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
 
+#ifdef ENABLE_MAP_IO
+    // For Map IO only; init keyframe from cv::FileStorage
+    KeyFrame(cv::FileStorage & fs, Map * mMap, ORBVocabulary* mVocabulary, KeyFrameDatabase* mKeyFrameDatabase);
+#endif
+
+    void ExportToYML(cv::FileStorage & fs);
+
     // Pose functions
     void SetPose(const cv::Mat &Tcw);
     cv::Mat GetPose();
@@ -81,6 +88,7 @@ public:
     std::set<KeyFrame*> GetLoopEdges();
 
     // MapPoint observation functions
+    void AppendMapPoint(MapPoint* pMP);
     void AddMapPoint(MapPoint* pMP, const size_t &idx);
     void EraseMapPointMatch(const size_t &idx);
     void EraseMapPointMatch(MapPoint* pMP);
@@ -89,6 +97,9 @@ public:
     std::vector<MapPoint*> GetMapPointMatches();
     int TrackedMapPoints(const int &minObs);
     MapPoint* GetMapPoint(const size_t &idx);
+
+    //
+    void AddCovisibleKeyFrames(KeyFrame* pKF);
 
     // KeyPoint functions
     std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r) const;
@@ -112,7 +123,7 @@ public:
         return a>b;
     }
 
-    static bool lId(KeyFrame* pKF1, KeyFrame* pKF2){
+    static bool idComp(KeyFrame* pKF1, KeyFrame* pKF2){
         return pKF1->mnId<pKF2->mnId;
     }
 
@@ -122,6 +133,22 @@ public:
 
     static long unsigned int nNextId;
     long unsigned int mnId;
+    
+    // optimizable flag: free KF or fixed KF
+    bool mbFixedKF;
+
+#ifdef ENABLE_MAP_IO
+    long unsigned int mnFrameId;
+
+    double mTimeStamp;
+
+    // Grid (to speed up feature matching)
+    int mnGridCols;
+    int mnGridRows;
+    float mfGridElementWidthInv;
+    float mfGridElementHeightInv;
+    
+#else
     const long unsigned int mnFrameId;
 
     const double mTimeStamp;
@@ -131,6 +158,7 @@ public:
     const int mnGridRows;
     const float mfGridElementWidthInv;
     const float mfGridElementHeightInv;
+#endif
 
     // Variables used by the tracking
     long unsigned int mnTrackReferenceForFrame;
@@ -153,6 +181,20 @@ public:
     cv::Mat mTcwBefGBA;
     long unsigned int mnBAGlobalForKF;
 
+#ifdef ENABLE_MAP_IO
+    // Calibration parameters
+    float fx, fy, cx, cy, invfx, invfy, mbf, mb, mThDepth;
+
+    // Number of KeyPoints
+    int N;
+
+    // KeyPoints, stereo coordinate and descriptors (all associated by an index)
+    std::vector<cv::KeyPoint> mvKeys;
+    std::vector<cv::KeyPoint> mvKeysUn;
+    std::vector<float> mvuRight; // negative value for monocular points
+    std::vector<float> mvDepth; // negative value for monocular points
+    cv::Mat mDescriptors;
+#else
     // Calibration parameters
     const float fx, fy, cx, cy, invfx, invfy, mbf, mb, mThDepth;
 
@@ -165,6 +207,7 @@ public:
     const std::vector<float> mvuRight; // negative value for monocular points
     const std::vector<float> mvDepth; // negative value for monocular points
     const cv::Mat mDescriptors;
+#endif
 
     //BoW
     DBoW2::BowVector mBowVec;
@@ -173,6 +216,22 @@ public:
     // Pose relative to parent (this is computed when bad flag is activated)
     cv::Mat mTcp;
 
+#ifdef ENABLE_MAP_IO
+    // Scale
+    int mnScaleLevels;
+    float mfScaleFactor;
+    float mfLogScaleFactor;
+    std::vector<float> mvScaleFactors;
+    std::vector<float> mvLevelSigma2;
+    std::vector<float> mvInvLevelSigma2;
+
+    // Image bounds and calibration
+    int mnMinX;
+    int mnMinY;
+    int mnMaxX;
+    int mnMaxY;
+    cv::Mat mK;
+#else
     // Scale
     const int mnScaleLevels;
     const float mfScaleFactor;
@@ -187,6 +246,7 @@ public:
     const int mnMaxX;
     const int mnMaxY;
     const cv::Mat mK;
+#endif
 
 
     // The following variables need to be accessed trough a mutex to be thread safe.
@@ -222,7 +282,7 @@ protected:
     // Bad flags
     bool mbNotErase;
     bool mbToBeErased;
-    bool mbBad;    
+    bool mbBad;
 
     float mHalfBaseline; // Only for visualization
 

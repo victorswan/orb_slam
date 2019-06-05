@@ -9,10 +9,10 @@ import signal
 # SeqNameList = ['left_cam', 'right_cam', 'not_exist'];
 SeqNameList = ['stereo_cam'];
 
-Result_root = '/mnt/DATA/tmp/NewCollege/ORBv2_Baseline_ROS/'
+Result_root = '/mnt/DATA/tmp/NewCollege/ORBv2_Baseline_BALogging/'
 
 # Number_GF_List = [60, 80, 100, 130, 160, 200, 240]; # [80, 100, 120]; # 
-Number_GF_List = [1500] # [400, 600, 800, 1000, 1500, 2000]; #  
+Number_GF_List = [800] # [400, 600, 800, 1000, 1500, 2000]; #  
 Num_Repeating = 1 # 10 # 50 # 20 #  5 # 
 SleepTime = 1 # 10 # 25
 
@@ -54,10 +54,10 @@ for ri, num_gf in enumerate(Number_GF_List):
             File_traj = Experiment_dir + '/' + SeqName
             
             # do viz
-            cmd_slam   = str('rosrun GF_ORB_SLAM2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf)) + ' false true /cam0/image_raw /cam1/image_raw ' + File_traj)
+            cmd_slam   = str('rosrun gf_orb_slam2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf*2)) + ' false true /cam0/image_raw /cam1/image_raw ' + File_traj)
             # no viz
-            # cmd_slam   = str('rosrun GF_ORB_SLAM2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf)) + ' false false /cam0/image_raw /cam1/image_raw ' + File_traj)
-            cmd_rosbag = 'rosbag play ' + File_rosbag # + ' -r 0.3' # + ' -u 20' 
+            # cmd_slam   = str('rosrun gf_orb_slam2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf*2)) + ' false false /cam0/image_raw /cam1/image_raw ' + File_traj)
+            cmd_rosbag = 'rosbag play ' + File_rosbag + ' -q' + ' -r 0.5' # + ' -u 20' 
 
             print bcolors.WARNING + "cmd_slam: \n"   + cmd_slam   + bcolors.ENDC
             print bcolors.WARNING + "cmd_rosbag: \n" + cmd_rosbag + bcolors.ENDC

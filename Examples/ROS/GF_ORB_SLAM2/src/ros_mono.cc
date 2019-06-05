@@ -24,14 +24,25 @@
 #include<fstream>
 #include<chrono>
 
-#include<ros/ros.h>
+#include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 
-#include<opencv2/core/core.hpp>
+#include <opencv2/core/core.hpp>
+#include"../../../../include/System.h"
 
-#include"../../../include/System.h"
+#include "nav_msgs/Odometry.h"
+#include "geometry_msgs/TransformStamped.h"
+#include "tf/transform_datatypes.h"
+#include <tf/transform_broadcaster.h>
+
+//
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <ros/publisher.h>
+
 
 using namespace std;
+
+//#define USE_FISHEYE_DISTORTION
 
 class ImageGrabber
 {
@@ -40,7 +51,14 @@ public:
 
     void GrabImage(const sensor_msgs::ImageConstPtr& msg);
 
+    void GrabOdom(const nav_msgs::Odometry::ConstPtr& msg);
+
     ORB_SLAM2::System* mpSLAM;
+	
+  double timeStamp;  
+  cv::Mat Tmat;
+
+    ros::Publisher mpCameraPosePublisher, mpCameraPoseInIMUPublisher;
 };
 
 int main(int argc, char **argv)
@@ -50,7 +68,7 @@ int main(int argc, char **argv)
 
     if(argc != 7)
     {
-        cerr << endl << "Usage: rosrun ORB_SLAM2 Mono path_to_vocabulary path_to_settings budget_per_frame "
+        cerr << endl << "Usage: rosrun gf_orb_slam2 Mono path_to_vocabulary path_to_settings budget_per_frame "
              << " do_viz topic_image_raw path_to_traj" << endl;
         ros::shutdown();
         return 1;
@@ -65,17 +83,31 @@ int main(int argc, char **argv)
 
     SLAM.SetBudgetPerFrame(std::atoi(argv[3]));
 
+#ifdef LOGGING_KF_LIST
+    std::string fNameRealTimeBA = std::string(argv[6]) + "_Log_BA.txt";
+    std::cout << std::endl << "Saving BA Log to Log_BA.txt" << std::endl;
+#endif
+
+#ifdef REALTIME_TRAJ_LOGGING
     std::string fNameRealTimeTrack = std::string(argv[6]) + "_AllFrameTrajectory.txt";
     std::cout << std::endl << "Saving AllFrame Trajectory to AllFrameTrajectory.txt" << std::endl;
     SLAM.SetRealTimeFileStream(fNameRealTimeTrack);
-
+#endif
 
     ImageGrabber igb(&SLAM);
 
-    ros::NodeHandle nodeHandler;
-    // ros::Subscriber sub = nodeHandler.subscribe("/cam0/image_raw", 1, &ImageGrabber::GrabImage,&igb);
-    ros::Subscriber sub = nodeHandler.subscribe(argv[5], 1, &ImageGrabber::GrabImage, &igb);
+    ros::NodeHandle nh;
+    // ros::Subscriber sub = nh.subscribe("/cam0/image_raw", 1, &ImageGrabber::GrabImage,&igb);
+    ros::Subscriber sub = nh.subscribe(argv[5], 1, &ImageGrabber::GrabImage, &igb);
 
+//
+ros::Subscriber sub2 = nh.subscribe("/odom_sparse", 100, &ImageGrabber::GrabOdom, &igb);
+
+// TODO
+    // figure out the proper queue size
+igb.mpCameraPosePublisher = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("ORB_SLAM/camera_pose", 100);
+igb.mpCameraPoseInIMUPublisher = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("ORB_SLAM/camera_pose_in_imu", 100);
+  
 
 while(ros::ok()) 
     ros::spin();
@@ -86,6 +118,10 @@ while(ros::ok())
     // Save camera trajectory
     SLAM.SaveKeyFrameTrajectoryTUM( std::string(argv[6]) + "_KeyFrameTrajectory.txt" );
     SLAM.SaveTrackingLog( std::string(argv[6]) + "_Log.txt" );
+#ifdef LOCAL_BA_TIME_LOGGING
+    SLAM.SaveMappingLog( std::string(argv[6]) + "_Log_Mapping.txt" );
+#endif
+
 
     std::cout << "Finished saving!" << std::endl;
 
@@ -101,6 +137,31 @@ while(ros::ok())
     return 0;
 }
 
+
+void ImageGrabber::GrabOdom(const nav_msgs::Odometry::ConstPtr& msg) {
+  /*
+  ROS_INFO("Seq: [%d]", msg->header.seq);
+  ROS_INFO("Position-> x: [%f], y: [%f], z: [%f]", msg->pose.pose.position.x,msg->pose.pose.position.y, msg->pose.pose.position.z);
+  ROS_INFO("Orientation-> x: [%f], y: [%f], z: [%f], w: [%f]", msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
+  ROS_INFO("Vel-> Linear: [%f], Angular: [%f]", msg->twist.twist.linear.x,msg->twist.twist.angular.z);
+  */
+  
+  // TODO
+  timeStamp = msg->header.stamp.toSec();
+  
+  mpSLAM->mpTracker->BufferingOdom(
+    timeStamp, 
+    msg->pose.pose.position.x, 
+    msg->pose.pose.position.y, 
+    msg->pose.pose.position.z, 
+    msg->pose.pose.orientation.w, 
+			    msg->pose.pose.orientation.x, 
+			    msg->pose.pose.orientation.y, 
+			    msg->pose.pose.orientation.z
+  );
+}
+
+
 void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 {
     // Copy the ros image message to cv::Mat.
@@ -115,7 +176,117 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         return;
     }
 
-    mpSLAM->TrackMonocular(cv_ptr->image,cv_ptr->header.stamp.toSec());
+cv::Mat pose = mpSLAM->TrackMonocular(cv_ptr->image,cv_ptr->header.stamp.toSec());
+
+    if (pose.empty())
+        return;
+
+    // std::cout << "broadcast pose!" << std::endl;
+/*
+    /// broadcast tf
+    // global left handed coordinate system 
+    static cv::Mat pose_prev = cv::Mat::eye(4,4, CV_32F);
+    static cv::Mat world_lh = cv::Mat::eye(4,4, CV_32F);
+    // matrix to flip signs of sinus in rotation matrix, not sure why we need to do that
+    static const cv::Mat flipSign = (cv::Mat_<float>(4,4) <<   1,-1,-1, 1,
+                                     -1, 1,-1, 1,
+                                     -1,-1, 1, 1,
+                                     1, 1, 1, 1);
+
+    //prev_pose * T = pose
+    cv::Mat translation =  (pose * pose_prev.inv()).mul(flipSign);
+    world_lh = world_lh * translation;
+    pose_prev = pose.clone();
+
+    tf::Matrix3x3 tf3d;
+    tf3d.setValue(pose.at<float>(0,0), pose.at<float>(0,1), pose.at<float>(0,2),
+                  pose.at<float>(1,0), pose.at<float>(1,1), pose.at<float>(1,2),
+                  pose.at<float>(2,0), pose.at<float>(2,1), pose.at<float>(2,2));
+
+    tf::Vector3 cameraTranslation_rh( world_lh.at<float>(0,3),world_lh.at<float>(1,3), - world_lh.at<float>(2,3) );
+
+    //rotate 270deg about x and 270deg about x to get ENU: x forward, y left, z up
+    const tf::Matrix3x3 rotation270degXZ(   0, 1, 0,
+                                            0, 0, 1,
+                                            1, 0, 0);
+
+    static tf::TransformBroadcaster br;
+
+    tf::Matrix3x3 globalRotation_rh = tf3d;
+    tf::Vector3 globalTranslation_rh = cameraTranslation_rh * rotation270degXZ;
+
+    tf::Quaternion tfqt;
+    globalRotation_rh.getRotation(tfqt);
+
+    double aux = tfqt[0];
+    tfqt[0]=-tfqt[2];
+    tfqt[2]=tfqt[1];
+    tfqt[1]=aux;
+
+    tf::Transform transform;
+    transform.setOrigin(globalTranslation_rh);
+    transform.setRotation(tfqt);
+
+    br.sendTransform(tf::StampedTransform(transform, cv_ptr->header.stamp, "map", "camera_pose"));
+    */
+    
+    
+    /// broadcast campose pose message
+    // camera pose
+ /*
+         tf::Matrix3x3 R( 0,  0,  1,
+                        -1,  0,  0,
+                         0, -1,  0);
+         tf::Transform T ( R * tf::Matrix3x3( transform.getRotation() ), R * transform.getOrigin() );
+  */
+ 
+     cv::Mat Rwc = pose.rowRange(0,3).colRange(0,3).t();
+        cv::Mat twc = -Rwc*pose.rowRange(0,3).col(3);
+        tf::Matrix3x3 M(Rwc.at<float>(0,0),Rwc.at<float>(0,1),Rwc.at<float>(0,2),
+                        Rwc.at<float>(1,0),Rwc.at<float>(1,1),Rwc.at<float>(1,2),
+                        Rwc.at<float>(2,0),Rwc.at<float>(2,1),Rwc.at<float>(2,2));
+        tf::Vector3 V(twc.at<float>(0), twc.at<float>(1), twc.at<float>(2));
+
+        tf::Transform tfTcw(M,V);
+    geometry_msgs::Transform gmTwc;
+        tf::transformTFToMsg(tfTcw, gmTwc);
+        
+        geometry_msgs::Pose camera_pose;
+        camera_pose.position.x = gmTwc.translation.x;
+        camera_pose.position.y = gmTwc.translation.y;
+        camera_pose.position.z = gmTwc.translation.z;
+        camera_pose.orientation = gmTwc.rotation;
+    
+    geometry_msgs::PoseWithCovarianceStamped camera_odom;
+        camera_odom.header.frame_id = "odom";
+        camera_odom.header.stamp = cv_ptr->header.stamp;
+        camera_odom.pose.pose = camera_pose;
+    
+        mpCameraPosePublisher.publish(camera_odom);
+    
+    tf::Matrix3x3 Ric( 0,  0,  1,
+                         -1,  0,  0,
+                         0,  -1,  0);
+    
+    tf::Matrix3x3 Rbi( 0,  -1,  0,
+                         0,  0,  -1,
+                         1,  0,  0);
+     
+        tf::Transform tfTiw ( Ric * tf::Matrix3x3( tfTcw.getRotation() ) * Rbi, Ric * tfTcw.getOrigin() );
+    geometry_msgs::Transform gmTwi;
+        tf::transformTFToMsg(tfTiw, gmTwi);
+        
+        geometry_msgs::Pose camera_pose_in_imu;
+        camera_pose_in_imu.position.x = gmTwi.translation.x;
+        camera_pose_in_imu.position.y = gmTwi.translation.y;
+        camera_pose_in_imu.position.z = gmTwi.translation.z;
+        camera_pose_in_imu.orientation = gmTwi.rotation;
+    
+    geometry_msgs::PoseWithCovarianceStamped camera_odom_in_imu;
+        camera_odom_in_imu.header.frame_id = "odom";
+        camera_odom_in_imu.header.stamp = cv_ptr->header.stamp;
+        camera_odom_in_imu.pose.pose = camera_pose_in_imu;
+    
+        mpCameraPoseInIMUPublisher.publish(camera_odom_in_imu);
+
 }
-
-

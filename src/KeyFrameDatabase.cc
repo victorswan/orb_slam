@@ -41,6 +41,10 @@ void KeyFrameDatabase::add(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutex);
 
+#ifdef ENABLE_MAP_IO
+    mvpKFset.insert(pKF);//added by FC
+#endif
+
     for(DBoW2::BowVector::const_iterator vit= pKF->mBowVec.begin(), vend=pKF->mBowVec.end(); vit!=vend; vit++)
         mvInvertedFile[vit->first].push_back(pKF);
 }
@@ -48,6 +52,10 @@ void KeyFrameDatabase::add(KeyFrame *pKF)
 void KeyFrameDatabase::erase(KeyFrame* pKF)
 {
     unique_lock<mutex> lock(mMutex);
+
+#ifdef ENABLE_MAP_IO
+    mvpKFset.erase(pKF);//added by FC
+#endif
 
     // Erase elements in the Inverse File for the entry
     for(DBoW2::BowVector::const_iterator vit=pKF->mBowVec.begin(), vend=pKF->mBowVec.end(); vit!=vend; vit++)
@@ -211,6 +219,8 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
             for(list<KeyFrame*>::iterator lit=lKFs.begin(), lend= lKFs.end(); lit!=lend; lit++)
             {
                 KeyFrame* pKFi=*lit;
+                // cout << pKFi->mnRelocQuery << " " << F->mnId << endl;
+
                 if(pKFi->mnRelocQuery!=F->mnId)
                 {
                     pKFi->mnRelocWords=0;
@@ -220,9 +230,13 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
                 pKFi->mnRelocWords++;
             }
         }
+
+        if(lKFsSharingWords.empty()) {
+            cout << "func DetectRelocalizationCandidates: lKFsSharingWords is empty!" << endl;
+            return vector<KeyFrame*>();
+        }
+        cout << "func DetectRelocalizationCandidates: pass lKFsSharingWords!" << endl;
     }
-    if(lKFsSharingWords.empty())
-        return vector<KeyFrame*>();
 
     // Only compare against those keyframes that share enough words
     int maxCommonWords=0;
@@ -252,8 +266,11 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
         }
     }
 
-    if(lScoreAndMatch.empty())
+    if(lScoreAndMatch.empty()){
+        cout << "func DetectRelocalizationCandidates: lScoreAndMatch is empty!" << endl;
         return vector<KeyFrame*>();
+    }
+    cout << "func DetectRelocalizationCandidates: pass lScoreAndMatch!" << endl;
 
     list<pair<float,KeyFrame*> > lAccScoreAndMatch;
     float bestAccScore = 0;
@@ -304,6 +321,8 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
             }
         }
     }
+
+    cout << "func DetectRelocalizationCandidates: done!" << endl;
 
     return vpRelocCandidates;
 }

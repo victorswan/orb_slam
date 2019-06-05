@@ -25,6 +25,7 @@
 #include <string>
 #include <thread>
 #include <opencv2/core/core.hpp>
+#include <boost/filesystem.hpp>
 
 /* Add this line to fix problem "Eigen deprecated"*/
 #include <unistd.h>
@@ -39,6 +40,7 @@
 #include "ORBVocabulary.h"
 #include "Viewer.h"
 #include "Util.hpp"
+#include "Hashing.h"
 
 namespace ORB_SLAM2
 {
@@ -116,25 +118,32 @@ public:
     // See format details at: http://www.cvlibs.net/datasets/kitti/eval_odometry.php
     void SaveTrajectoryKITTI(const string &filename);
 
-    //
-    void SaveTrackingLog(const string &filename);
-    void SaveGFLog(const string &filename);
 
+    void SaveTrackingLog(const string &filename);
+    void SaveMappingLog(const string &filename);
+
+
+    void SetRealTimeFileStream(const string &track_fname, const string &BA_fname);
     void SetRealTimeFileStream(const string &filename);
 
 
     void SetBudgetPerFrame(const size_t budget_per_frame);
     
-
-    //    // TODO: Save/Load functions
-    //    void SaveMap(const std::string &map_path);
-    //    void LoadMap(const std::string &map_path);
+#ifdef ENABLE_MAP_IO
+    // TODO: Save/Load functions
+    void SaveMap(const std::string &map_path);
+    void LoadMap(const std::string &map_path);
+#endif
 
     // Information from most recent processed frame
     // You can call this right after TrackMonocular (or stereo or RGBD)
     int GetTrackingState();
     std::vector<MapPoint*> GetTrackedMapPoints();
     std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
+
+    void ForceRelocTracker();
+
+    void ForceInitTracker();
 
     //private:
 public:
@@ -161,6 +170,8 @@ public:
 
     // Map structure that stores the pointers to all KeyFrames and MapPoints.
     Map* mpMap;
+
+    HASHING::MultiIndexHashing* mpHashHandler;
 
     // Tracker. It receives a frame and computes the associated camera pose.
     // It also decides when to insert a new keyframe, create some new MapPoints and
@@ -200,6 +211,9 @@ public:
     std::vector<MapPoint*> mTrackedMapPoints;
     std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
     std::mutex mMutexState;
+
+    unsigned long max_KF_Id, max_Pt_Id;
+
 };
 
 }// namespace ORB_SLAM

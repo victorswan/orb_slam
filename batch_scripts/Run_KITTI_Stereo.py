@@ -5,32 +5,18 @@ import subprocess
 import time
 import signal
 
-#SeqStartTime = [0, 0, 0, 0]
-#SeqDuration = [999, 999, 999, 999]
-#SeqNameList = ['Seq00_stereo', 'Seq02_stereo', 'Seq05_stereo', 'Seq08_stereo'];
-#SeqConfigPre = ['00_02', '00_02', '04_12', '04_12']
-SeqStartTime = [0, 0, 0, 0, 0, 0, 0]
-SeqDuration = [999, 999, 999, 999, 999, 999, 999]
-SeqNameList = ['Seq01_stereo', 'Seq03_stereo', 'Seq04_stereo', 'Seq06_stereo', 'Seq07_stereo', 'Seq09_stereo', 'Seq10_stereo'];
-SeqConfigPre = ['00_02', '03', '04_12', '04_12', '04_12', '04_12', '04_12']
+# SeqNameList = ['Seq00_stereo', 'Seq02_stereo']
+# SeqNameList = ['Seq05_stereo', 'Seq08_stereo'];
+SeqNameList = ['Seq05_stereo'];
 
-# Result_root = '/mnt/DATA/tmp/KITTI/vanilla_ORBv2_Stereo_Baseline_v2/'
-# Result_root = '/mnt/DATA/tmp/KITTI/delayed_ORBv2_Stereo_Baseline_v2/'
-Result_root = '/mnt/DATA/tmp/KITTI/lmk1500/ORBv2_Stereo_GF_v2/'
-# Result_root = '/mnt/DATA/tmp/KITTI/lmk1500/ORBv2_Stereo_Random/'
-# Result_root = '/mnt/DATA/tmp/KITTI/lmk1500/ORBv2_Stereo_Long/'
+Result_root = '/mnt/DATA/tmp/KITTI/ORBv2_Baseline/'
 
-Number_GF_List  = [200]; # [130, 160, 200, 240, 280]; # [80, 100, 130, 160, 200, 240, 280]; # 
-# Number_GF_List = [600, 800, 1500, 2000] # [600, 800, 1000, 1500, 2000]; #  
+# Number_GF_List = [60, 80, 100, 130, 160, 200, 240]; # [80, 100, 120]; # 
+Number_GF_List = [600, 800, 1000, 1500, 2000]; #  [1500] # 
+Num_Repeating = 10 # 50 # 20 #  3 # 5 # 
+SleepTime = 1 # 10 # 25
 
-Num_Repeating   = 10 # 5 # 1 # 
-
-Do_rect         = str('false') # str('true') # 
-Do_viz          = str('false') # str('true') # 
-
-SleepTime       = 1 # 10 # 25
-
-config_path     = '/home/yipuzhao/ros_workspace/package_dir/ORB_Data'
+config_path = '/home/yipuzhao/ros_workspace/package_dir/ORB_Data'
 
 #----------------------------------------------------------------------------------------------------------------------
 class bcolors:
@@ -60,18 +46,19 @@ for ri, num_gf in enumerate(Number_GF_List):
             SeqName = SeqNameList[sn]
             print bcolors.ALERT + "Round: " + str(iteration + 1) + "; Seq: " + SeqName
 
-            File_Setting = config_path + '/KITTI_yaml/KITTI_' + SeqConfigPre[sn] \
-            + '_stereo_lmk1500.yaml'
+            # File_Setting = config_path + '/KITTI_yaml/KITTI_00_02_stereo_lmk1500.yaml'
+            File_Setting = config_path + '/KITTI_yaml/KITTI_04_12_stereo_lmk1500.yaml'
 
             # File_Vocab = config_path + '/ORBvoc.txt'
             File_Vocab = config_path + '/ORBvoc.bin'
             File_rosbag  = '/mnt/DATA/Datasets/Kitti_Dataset/BagFiles/' + SeqName + '.bag'
             File_traj = Experiment_dir + '/' + SeqName
-            
-            cmd_slam   = str('rosrun GF_ORB_SLAM2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + \
-                str(int(num_gf*2)) + ' ' + Do_rect + ' ' + Do_viz + ' /left/image_raw /right/image_raw ' + File_traj)
-            cmd_rosbag = 'rosbag play ' + File_rosbag + ' -s ' + str(SeqStartTime[sn]) \
-            + ' -u ' + str(SeqDuration[sn]) # + ' -r 0.3' # + ' -s 17' #
+
+            # do viz
+            # cmd_slam   = str('rosrun gf_orb_slam2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf*2)) + ' false true /left/image_raw /right/image_raw ' + File_traj)
+            # no viz
+            cmd_slam   = str('rosrun gf_orb_slam2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf*2)) + ' false false /left/image_raw /right/image_raw ' + File_traj)
+            cmd_rosbag = 'rosbag play ' + File_rosbag 
 
             print bcolors.WARNING + "cmd_slam: \n"   + cmd_slam   + bcolors.ENDC
             print bcolors.WARNING + "cmd_rosbag: \n" + cmd_rosbag + bcolors.ENDC

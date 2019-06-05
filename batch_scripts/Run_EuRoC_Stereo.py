@@ -7,21 +7,17 @@ import signal
 
 # SeqNameList = ['MH_01_easy', 'MH_03_medium', 'MH_05_difficult', 'V2_02_medium', 'not_exist'];
 # SeqNameList = ['V1_03_difficult', 'V2_02_medium', 'V2_03_difficult', 'not_exist'];
-SeqNameList = ['MH_01_easy', 'MH_02_easy', 'MH_03_medium', 'MH_04_difficult', 'MH_05_difficult', 'V1_01_easy', \
-'V1_02_medium', 'V1_03_difficult', 'V2_01_easy', 'V2_02_medium', 'V2_03_difficult', 'not_exist'];
+SeqNameList = ['MH_01_easy', 'MH_02_easy', 'MH_03_medium', 'MH_04_difficult', 'MH_05_difficult', 'V1_01_easy', 'V1_02_medium', 'V1_03_difficult', 'V2_01_easy', 'V2_02_medium', 'V2_03_difficult', 'not_exist'];
 
-Result_root = '/mnt/DATA/tmp/EuRoC/TRO_Stereo_Demo/'
-# Result_root = '/mnt/DATA/tmp/EuRoC/ORB2_Stereo_Baseline/'
+Result_root = '/mnt/DATA/tmp/EuRoC/ORB2_Stereo_Baseline/'
 # Result_root = '/mnt/DATA/tmp/EuRoC/Lmk_800/ORB2_active_measErr_withFrameInfo/'
 
 Number_GF_List = [800]; # [400, 600, 800, 1000, 1500, 2000]; # 
 # Number_GF_List = [60, 80, 100, 150, 200];
-
 Num_Repeating = 1 # 10 # 20 #  5 # 
 SleepTime = 1 # 10 # 25
 
-do_Viz = str('true')
-do_Rect = str('true')
+config_path = '/home/yipuzhao/ros_workspace/package_dir/ORB_Data'
 
 #----------------------------------------------------------------------------------------------------------------------
 class bcolors:
@@ -41,6 +37,7 @@ for ri, num_gf in enumerate(Number_GF_List):
     for iteration in range(0, Num_Repeating):
 
         Experiment_dir = Result_root + Experiment_prefix + '_Round' + str(iteration + 1)
+        # mkdir for pose traj
         cmd_mkdir = 'mkdir -p ' + Experiment_dir
         subprocess.call(cmd_mkdir, shell=True)
 
@@ -54,19 +51,21 @@ for ri, num_gf in enumerate(Number_GF_List):
             # File_Setting = './Examples/Stereo/EuRoC.yaml'
             # File_Setting = '../../ORB_Data/EuRoC_yaml/EuRoC_stereo_lmk400.yaml'
             # File_Setting = '../../ORB_Data/EuRoC_yaml/EuRoC_stereo_lmk600.yaml'
-            File_Setting = '../../ORB_Data/EuRoC_yaml/EuRoC_stereo_lmk800.yaml'
+            File_Setting = config_path + '/EuRoC_yaml/EuRoC_stereo_lmk800.yaml'
             # File_Setting = '../../ORB_Data/EuRoC_yaml/EuRoC_stereo_lmk1000.yaml'
             # File_Setting = '../../ORB_Data/EuRoC_yaml/EuRoC_stereo_lmk1500.yaml'
             # File_Setting = '../../ORB_Data/EuRoC_yaml/EuRoC_stereo_lmk2000.yaml'
             # File_Setting = '../../ORB_Data/EuRoC_yaml/EuRoC_stereo_lmk2500.yaml'
 
             # File_Vocab   = '../ORB_Data/ORBvoc.txt'
-            File_Vocab   = '../../ORB_Data/ORBvoc.bin'
+            File_Vocab   = config_path + '/ORB_Data/ORBvoc.bin'
             File_rosbag  = '/mnt/DATA/Datasets/EuRoC_dataset/BagFiles/' + SeqName + '.bag'
             File_traj = Experiment_dir + '/' + SeqName
 
-            cmd_slam   = str('rosrun GF_ORB_SLAM2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf*2)) \
-                + ' ' + do_Viz + ' ' + do_Rect + ' /cam0/image_raw /cam1/image_raw ' + File_traj)
+            # do viz
+            cmd_slam   = str('rosrun gf_orb_slam2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf)) + ' false true /cam0/image_raw /cam1/image_raw ' + File_traj)
+            # no viz
+            # cmd_slam   = str('rosrun gf_orb_slam2 Stereo ' + File_Vocab + ' ' + File_Setting + ' ' + str(int(num_gf)) + ' false false /cam0/image_raw /cam1/image_raw ' + File_traj)
             cmd_rosbag = 'rosbag play ' + File_rosbag # + ' -r 0.3' # + ' -u 20' 
 
             print bcolors.WARNING + "cmd_slam: \n"   + cmd_slam   + bcolors.ENDC
@@ -84,5 +83,7 @@ for ri, num_gf in enumerate(Number_GF_List):
             print bcolors.OKGREEN + "Finished rosbag playback, kill the process" + bcolors.ENDC
             subprocess.call('rosnode kill Stereo', shell=True)
             time.sleep(SleepTime)
+            # print bcolors.OKGREEN + "Saving the map to file system" + bcolors.ENDC
+            # time.sleep(15)
             subprocess.call('pkill Stereo', shell=True)
 

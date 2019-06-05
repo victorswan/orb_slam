@@ -53,7 +53,269 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
             mGrid[i][j] = F.mGrid[i][j];
     }
 
-    SetPose(F.mTcw);    
+    SetPose(F.mTcw);
+    
+    //
+    mbFixedKF = false;
+}
+
+#ifdef ENABLE_MAP_IO
+KeyFrame::KeyFrame(cv::FileStorage & fs, Map * mMap,
+                   ORBVocabulary* mVocabulary, KeyFrameDatabase* mKeyFrameDatabase) {
+
+    double val_tmp;
+
+    fs["nNextId"] >> val_tmp; nNextId = (unsigned long)val_tmp;
+    fs["mnId"] >> val_tmp; mnId = (unsigned long)val_tmp;
+    fs["mnFrameId"] >> val_tmp; mnFrameId = (const unsigned long)val_tmp;
+
+    fs["mTimeStamp"] >> mTimeStamp;
+
+    fs["mnGridCols"] >> mnGridCols;
+    fs["mnGridRows"] >> mnGridRows;
+    fs["mfGridElementWidthInv"] >> mfGridElementWidthInv;
+    fs["mfGridElementHeightInv"] >> mfGridElementHeightInv;
+
+    fs["mnTrackReferenceForFrame"] >> val_tmp; mnTrackReferenceForFrame = (unsigned long)val_tmp;
+    fs["mnFuseTargetForKF"] >> val_tmp; mnFuseTargetForKF = (unsigned long)val_tmp;
+    fs["mnBALocalForKF"] >> val_tmp; mnBALocalForKF = (unsigned long)val_tmp;
+    fs["mnBAFixedForKF"] >> val_tmp; mnBAFixedForKF = (unsigned long)val_tmp;
+
+    fs["mnLoopQuery"] >> val_tmp; mnLoopQuery = (unsigned long)val_tmp;
+    fs["mnLoopWords"] >> mnLoopWords;
+    fs["mLoopScore"] >> mLoopScore;
+
+    //    fs["mnRelocQuery"] >> val_tmp; mnRelocQuery = (unsigned long)val_tmp;
+    //    fs["mnRelocWords"] >> mnRelocWords;
+    //    fs["mRelocScore"] >> mRelocScore;
+    mnRelocQuery = ULONG_MAX;
+    mnRelocWords = 0;
+    mRelocScore = 0;
+
+    fs["fx"] >> fx;
+    fs["fy"] >> fy;
+    fs["cx"] >> cx;
+    fs["cy"] >> cy;
+
+    //    fs["Tcw"] >> Tcw;
+    cv::Mat Tcw_;
+    fs["Tcw"] >> Tcw_;
+    this->SetPose(Tcw_);
+    fs["Ow"] >> Ow;
+
+    //    fs["im"] >> im;
+    fs["mnMinX"] >> mnMinX;
+    fs["mnMinY"] >> mnMinY;
+    fs["mnMaxX"] >> mnMaxX;
+    fs["mnMaxY"] >> mnMaxY;
+    fs["mK"] >> mK;
+
+    cv::FileNode mvKeysFileNode = fs["mvKeys"];//>> no operator overloading for KeyPoint
+    read(mvKeysFileNode, mvKeys);
+    cv::FileNode mvKeysUnFileNode = fs["mvKeysUn"];
+    read(mvKeysUnFileNode, mvKeysUn);
+    assert(mvKeysUn.size() == mvKeys.size());
+    fs["mDescriptors"] >> mDescriptors;
+
+    fs["mvuRight"] >> mvuRight;
+    assert(mvuRight.size() == mvKeys.size());
+    fs["mvDepth"] >> mvDepth;
+    assert(mvDepth.size() == mvKeys.size());
+    //    cv::FileNode mvuRightFileNode = fs["mvuRight"];
+    //    read(mvuRightFileNode, mvuRight);
+    //    cv::FileNode mvDepthFileNode = fs["mvDepth"];
+    //    read(mvDepthFileNode, mvDepth);
+
+    mpKeyFrameDB = mKeyFrameDatabase;
+    mpORBvocabulary = mVocabulary;
+    vector<cv::Mat> vCurrentDesc = ORB_SLAM2::Converter::toDescriptorVector(mDescriptors);
+    mpORBvocabulary->transform(vCurrentDesc,mBowVec,mFeatVec,4);
+
+    std::vector<int> mGrid_serialized;
+    std::vector<int> mGridSize;
+    fs["mGrid"] >> mGrid_serialized;
+    fs["mGridSize"] >> mGridSize;
+    for(size_t i = 0; i < FRAME_GRID_COLS; i++){
+        std::vector<std::vector<size_t> > mGridyz;
+        for(size_t j = 0; j < FRAME_GRID_ROWS; j++){
+            std::vector<size_t> mGridz;
+            int sz = mGridSize.front();
+            mGridSize.erase(mGridSize.begin());
+            for(int k = 0; k < sz; k++){
+                mGridz.push_back(size_t(mGrid_serialized.front()));
+                mGrid_serialized.erase(mGrid_serialized.begin());
+            }
+            mGridyz.push_back(mGridz);
+        }
+        mGrid.push_back(mGridyz);
+    }
+
+    fs["mvOrderedWeights"] >> mvOrderedWeights;
+    fs["mbFirstConnection"] >> mbFirstConnection;
+
+    fs["mbNotErase"] >> mbNotErase;
+    fs["mbToBeErased"] >> mbToBeErased;
+    fs["mbBad"] >> mbBad;
+
+    fs["mnScaleLevels"] >> mnScaleLevels;
+    fs["mvScaleFactors"] >> mvScaleFactors;
+    fs["mvLevelSigma2"] >> mvLevelSigma2;
+    fs["mvInvLevelSigma2"] >> mvInvLevelSigma2;
+
+    mpParent = NULL;
+
+    mpMap = mMap;
+
+    mvpMapPoints.clear();
+    
+    //
+    mbFixedKF = true;
+}
+#endif
+
+void KeyFrame::ExportToYML(cv::FileStorage & fs) {
+
+    if (!fs.isOpened())
+        return ;
+
+    write(fs, "nNextId", double(nNextId));
+    write(fs, "mnId", double(mnId));
+    write(fs, "mnFrameId", double(mnFrameId));
+
+    write(fs, "mTimeStamp", mTimeStamp);
+
+    write(fs, "mnGridCols", mnGridCols);
+    write(fs, "mnGridRows", mnGridRows);
+    write(fs, "mfGridElementWidthInv", mfGridElementWidthInv);
+    write(fs, "mfGridElementHeightInv", mfGridElementHeightInv);
+
+    write(fs, "mnTrackReferenceForFrame", double(mnTrackReferenceForFrame));
+    write(fs, "mnFuseTargetForKF", double(mnFuseTargetForKF));
+
+    write(fs, "mnBALocalForKF", double(mnBALocalForKF));
+    write(fs, "mnBAFixedForKF", double(mnBAFixedForKF));
+
+    write(fs, "mnLoopQuery", double(mnLoopQuery));
+    write(fs, "mnLoopWords", mnLoopWords);
+    write(fs, "mLoopScore", mLoopScore);
+    write(fs, "mnRelocQuery", double(mnRelocQuery));
+    write(fs, "mnRelocWords", mnRelocWords);
+    write(fs, "mRelocScore", mRelocScore);
+
+    write(fs, "fx", fx);
+    write(fs, "fy", fy);
+    write(fs, "cx", cx);
+    write(fs, "cy", cy);
+
+    write(fs, "Tcw", Tcw);
+    write(fs, "Ow", Ow);
+
+    //    write(fs, "im", im);
+    write(fs, "mnMinX", mnMinX);
+    write(fs, "mnMinY", mnMinY);
+    write(fs, "mnMaxX", mnMaxX);
+    write(fs, "mnMaxY", mnMaxY);
+    write(fs, "mK", mK);
+
+    write(fs, "mvKeys", mvKeys);
+    write(fs, "mvKeysUn", mvKeysUn);
+    write(fs, "mDescriptors", mDescriptors);
+
+    write(fs, "mvuRight", mvuRight);
+    write(fs, "mvDepth", mvDepth);
+
+    //    cout << "here 1" << endl;
+
+    vector<double> mvMapPoints;
+    for(size_t i = 0; i < mvpMapPoints.size(); i++){
+        if(mvpMapPoints[i] != NULL)
+            mvMapPoints.push_back(double(mvpMapPoints[i]->mnId));//might point to NULL?
+        else
+            mvMapPoints.push_back(-1);
+    }
+    write(fs, "mvMapPoints", mvMapPoints);
+
+    //     cout << "here 2" << endl;
+
+    std::vector<int> mGrid_serialized;
+    std::vector<int> mGridSize;
+    for(size_t i = 0; i < mGrid.size(); i++){
+        for(size_t j = 0; j < mGrid[i].size(); j++){
+            mGridSize.push_back(mGrid[i][j].size());
+            if(mGrid[i][j].size() == 0)
+                continue;
+            else{
+                for(size_t k = 0; k < mGrid[i][j].size(); k++){
+                    mGrid_serialized.push_back(int(mGrid[i][j][k]));
+                }
+            }
+        }
+    }
+    write(fs, "mGrid", mGrid_serialized);
+    write(fs, "mGridSize", mGridSize);
+
+    //     cout << "here 3" << endl;
+    /*
+        for(size_t i = 0; i < pKF->mGrid.size(); i++){
+            for(size_t j = 0; j < pKF->mGrid[i].size(); j++){
+                f<<endl<<i<<" "<<j<<endl;
+                for(size_t k = 0; k < pKF->mGrid[i][j].size(); k++){
+                    f<<pKF->mGrid[i][j][k];
+                }
+            }
+        }
+        */
+    vector<double> mConnectedKeyFrameWeights_first;
+    vector<int> mConnectedKeyFrameWeights_second;
+    std::map<ORB_SLAM2::KeyFrame*,int>::iterator iteckfw = mConnectedKeyFrameWeights.begin();
+    for(; iteckfw != mConnectedKeyFrameWeights.end(); iteckfw++){
+        mConnectedKeyFrameWeights_first.push_back(double(iteckfw->first->mnId));
+        mConnectedKeyFrameWeights_second.push_back(iteckfw->second);
+    }
+    write(fs, "mConnectedKeyFrameWeights_first", mConnectedKeyFrameWeights_first);
+    write(fs, "mConnectedKeyFrameWeights_second", mConnectedKeyFrameWeights_second);
+
+    //     cout << "here 4" << endl;
+
+    vector<double> mvOrderedConnectedKeyFrames;
+    for(size_t i = 0; i < mvpOrderedConnectedKeyFrames.size(); i++){
+        mvOrderedConnectedKeyFrames.push_back(double(mvpOrderedConnectedKeyFrames[i]->mnId));
+    }
+    write(fs, "mvOrderedConnectedKeyFrames", mvOrderedConnectedKeyFrames);
+
+    write(fs, "mvOrderedWeights", mvOrderedWeights);
+
+    write(fs, "mbFirstConnection", mbFirstConnection);
+    write(fs, "mParent", (mpParent == NULL)? -1:double(mpParent->mnId));
+
+    //     cout << "here 5" << endl;
+
+    vector<double> msChildrens;
+    std::set<ORB_SLAM2::KeyFrame*>::iterator itec = mspChildrens.begin();
+    for(; itec != mspChildrens.end(); itec++){
+        msChildrens.push_back(double((*itec)->mnId));
+    }
+    write(fs, "msChildrens", msChildrens);
+
+    vector<double> msLoopEdges;
+    std::set<ORB_SLAM2::KeyFrame*>::iterator itele = mspLoopEdges.begin();
+    for(; itele != mspLoopEdges.end(); itele++){
+        msLoopEdges.push_back(double((*itele)->mnId));
+    }
+    write(fs, "msLoopEdges", msLoopEdges);
+
+    //     cout << "here 6" << endl;
+
+    write(fs, "mbNotErase", mbNotErase);
+    write(fs, "mbToBeErased", mbToBeErased);
+    write(fs, "mbBad", mbBad);
+
+    write(fs, "mnScaleLevels", mnScaleLevels);
+    write(fs, "mvScaleFactors", mvScaleFactors);
+    write(fs, "mvLevelSigma2", mvLevelSigma2);
+    write(fs, "mvInvLevelSigma2", mvInvLevelSigma2);
+
+    //     cout << "here 7" << endl;
 }
 
 void KeyFrame::ComputeBoW()
@@ -141,7 +403,7 @@ void KeyFrame::UpdateBestCovisibles()
     vector<pair<int,KeyFrame*> > vPairs;
     vPairs.reserve(mConnectedKeyFrameWeights.size());
     for(map<KeyFrame*,int>::iterator mit=mConnectedKeyFrameWeights.begin(), mend=mConnectedKeyFrameWeights.end(); mit!=mend; mit++)
-       vPairs.push_back(make_pair(mit->second,mit->first));
+        vPairs.push_back(make_pair(mit->second,mit->first));
 
     sort(vPairs.begin(),vPairs.end());
     list<KeyFrame*> lKFs;
@@ -153,7 +415,7 @@ void KeyFrame::UpdateBestCovisibles()
     }
 
     mvpOrderedConnectedKeyFrames = vector<KeyFrame*>(lKFs.begin(),lKFs.end());
-    mvOrderedWeights = vector<int>(lWs.begin(), lWs.end());    
+    mvOrderedWeights = vector<int>(lWs.begin(), lWs.end());
 }
 
 set<KeyFrame*> KeyFrame::GetConnectedKeyFrames()
@@ -198,6 +460,12 @@ vector<KeyFrame*> KeyFrame::GetCovisiblesByWeight(const int &w)
     }
 }
 
+void KeyFrame::AddCovisibleKeyFrames(KeyFrame* pKF)
+{
+    unique_lock<mutex> lock(mMutexConnections);
+    mvpOrderedConnectedKeyFrames.push_back(pKF);
+}
+
 int KeyFrame::GetWeight(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutexConnections);
@@ -205,6 +473,13 @@ int KeyFrame::GetWeight(KeyFrame *pKF)
         return mConnectedKeyFrameWeights[pKF];
     else
         return 0;
+}
+
+
+void KeyFrame::AppendMapPoint(MapPoint *pMP)
+{
+    unique_lock<mutex> lock(mMutexFeatures);
+    mvpMapPoints.push_back(pMP);
 }
 
 void KeyFrame::AddMapPoint(MapPoint *pMP, const size_t &idx)
@@ -251,11 +526,15 @@ int KeyFrame::TrackedMapPoints(const int &minObs)
 {
     unique_lock<mutex> lock(mMutexFeatures);
 
+    //    cout << "N = " << N << endl;
+
     int nPoints=0;
     const bool bCheckObs = minObs>0;
     for(int i=0; i<N; i++)
     {
+        //        cout << i << " ";
         MapPoint* pMP = mvpMapPoints[i];
+        //        cout << pMP << endl;
         if(pMP)
         {
             if(!pMP->isBad())
@@ -395,6 +674,7 @@ void KeyFrame::ChangeParent(KeyFrame *pKF)
     unique_lock<mutex> lockCon(mMutexConnections);
     mpParent = pKF;
     pKF->AddChild(this);
+    //    cout << "ChangeParent called!" << endl;
 }
 
 set<KeyFrame*> KeyFrame::GetChilds()

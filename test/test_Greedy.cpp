@@ -184,7 +184,7 @@ protected:  // You should make the members protected s.t. they can be
 
             pFrame_->mvbOutlier.push_back(false);
             pFrame_->mvbCandidate.push_back(true);
-            pFrame_->mvbJacobBuilt.push_back(false);
+         //   pFrame_->mvbJacobBuilt.push_back(false);
             pFrame_->mvbGoodFeature.push_back(false);
             pFrame_->mvpMatchScore.push_back(std::round( ( float(std::rand()) / float(RAND_MAX) ) * 100 ));
 
@@ -231,7 +231,7 @@ TEST_F(TestLazierGreedy, Selection) {
             //            std::cout << "selection start!" << std::endl;
             mpVec.clear();
             obs_->lmkSelectPool.clear();
-            pFrame_->mvbJacobBuilt = vector<bool>(pFrame_->N, false);
+          //  pFrame_->mvbJacobBuilt = vector<bool>(pFrame_->N, false);
             if (iter == 0) {
                 greedy_mtd = 1;
                 obs_->setSelction_Number(num_good_inlier, greedy_mtd, time_for_select, error_bound, pFrame_, &mpVec);

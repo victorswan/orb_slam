@@ -1,25 +1,3 @@
-/**
-* This file is part of GF-ORB-SLAM2.
-*
-* Copyright (C) 2019 Yipu Zhao <yipu dot zhao at gatech dot edu> 
-* (Georgia Institute of Technology)
-* For more information see 
-* <https://sites.google.com/site/zhaoyipu/good-feature-visual-slam>
-*
-* GF-ORB-SLAM2 is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* GF-ORB-SLAM is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with GF-ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #ifndef UTIL_HPP
 #define UTIL_HPP
 
@@ -181,7 +159,7 @@ struct KineStruct
 };
 
 // Structure for reporting time cost per module
-class TimeLog {
+class TrackingLog {
 public:
     //
     void setZero() {
@@ -209,12 +187,18 @@ public:
         time_update_motion = 0;
         time_post_proc = 0;
         //
+        time_hash_insert = 0;
+        time_hash_query = 0;
+        //
+        lmk_hash_dynamics = 0;
+        lmk_localmap_hash = 0;
+	lmk_localmap_covis = 0;
+	lmk_localmap_comb = 0;
+	//
         lmk_num_motion = 0;
         lmk_num_frame = 0;
         lmk_num_map = 0;
         lmk_num_BA = 0;
-        //
-        log_det_frame = 0;
         // obselet
         lmk_num_good = 0;
         lmk_num_inlier_good = 0;
@@ -251,16 +235,68 @@ public:
     double time_update_motion;
     double time_post_proc;
     //
-    double lmk_num_motion;
-    double lmk_num_frame;
-    double lmk_num_map;
-    double lmk_num_BA;
+    // map hash
+    double time_hash_insert;
+    double time_hash_query;
     //
-    double log_det_frame;
+    size_t lmk_num_motion;
+    size_t lmk_num_frame;
+    size_t lmk_num_map;
+    size_t lmk_num_BA;
+    //
+    size_t lmk_localmap_hash;
+    size_t lmk_localmap_covis;
+    size_t lmk_localmap_comb;
+    size_t lmk_hash_dynamics;
+
     // obselet
-    double lmk_num_good;
-    double lmk_num_inlier_good;
+    size_t lmk_num_good;
+    size_t lmk_num_inlier_good;
 };
+
+
+class MappingLog {
+public:
+    //
+    void setZero() {
+        frame_time_stamp = 0;
+        //
+        time_proc_new_keyframe = 0;
+        time_culling = 0;
+        time_tri_new_map_point = 0;
+        time_srh_more_neighbor = 0;
+        time_local_BA = 0;
+        //
+        num_fixed_KF = 0;
+        num_free_KF = 0;
+        num_Point = 0;
+    }
+
+    void setNaN() {
+        time_proc_new_keyframe = -1;
+        time_culling = -1;
+        time_tri_new_map_point = -1;
+        time_srh_more_neighbor = -1;
+        time_local_BA = -1;
+        //
+        num_fixed_KF = 0;
+        num_free_KF = 0;
+        num_Point = 0;
+    }
+
+    double frame_time_stamp;
+    //
+    double time_proc_new_keyframe;
+    double time_culling;
+    double time_tri_new_map_point;
+    double time_srh_more_neighbor;
+    double time_local_BA;
+
+    size_t num_fixed_KF;
+    size_t num_free_KF;
+    size_t num_Point;
+};
+
 
 class FramePose {
 public:
@@ -635,25 +671,32 @@ inline arma::rowvec DCM2QUAT_float(const arma::mat& a){
 
 }
 
+inline void QUAT2DCM_float(const float& qr, const float& qx, const float& qy, const float& qz, cv::Mat & R) {
+
+    R.at<float>(0,0) = qr*qr+qx*qx-qy*qy-qz*qz;
+    R.at<float>(0,1) = 2.0*(qx*qy-qr*qz);
+    R.at<float>(0,2) = 2.0*(qz*qx+qr*qy);
+    //
+    R.at<float>(1,0) = 2.0*(qx*qy+qr*qz);
+    R.at<float>(1,1) = qr*qr-qx*qx+qy*qy-qz*qz;
+    R.at<float>(1,2) = 2.0*(qy*qz-qr*qx);
+    //
+    R.at<float>(2,0) = 2.0*(qz*qx-qr*qy);
+    R.at<float>(2,1) = 2.0*(qy*qz+qr*qx);
+    R.at<float>(2,2) = qr*qr-qx*qx-qy*qy+qz*qz;
+
+    return ;
+}
+
 inline void QUAT2DCM_float(const arma::rowvec& q, cv::Mat & R) {
 
-    double x, y, z, r;
+    float x, y, z, r;
     x = q[1];
     y = q[2];
     z = q[3];
     r = q[0];
 
-    R.at<float>(0,0) = r*r+x*x-y*y-z*z;
-    R.at<float>(0,1) = 2.0*(x*y -r*z);
-    R.at<float>(0,2) = 2.0*(z*x+r*y);
-    //
-    R.at<float>(1,0) = 2.0*(x*y+r*z);
-    R.at<float>(1,1) = r*r-x*x+y*y-z*z;
-    R.at<float>(1,2) = 2.0*(y*z-r*x);
-    //
-    R.at<float>(2,0) = 2.0*(z*x-r*y);
-    R.at<float>(2,1) = 2.0*(y*z+r*x);
-    R.at<float>(2,2) = r*r-x*x-y*y+z*z;
+    QUAT2DCM_float(r, x, y, z, R);
 
     return ;
 }
@@ -929,7 +972,8 @@ inline void convert_Homo_Pair_To_PWLS_Vec(const double t_0, const cv::Mat& Tcw_0
     // don't call opencv inv function to get the inverse of homogenous matrix!
     // try to do it manually instead, as shown in pose update of tracking module!
     //
-    cv::Mat T_rel = Tcw_0 * Twc_1;
+    // cv::Mat T_rel = Tcw_0 * Twc_1;
+    cv::Mat T_rel = (Tcw_0 * Twc_1).inv();
     //    std::cout << "T_rel = " << T_rel << std::endl;
     //    std::cout << "Tcw_prev = " << Tcw_prev << std::endl;
     //    std::cout << "Twc_cur = " << Twc_cur << std::endl;
@@ -1032,6 +1076,45 @@ inline void compute_Huber_weight (const float residual_, float & weight_) {
         weight_ = 1.0;
     return ;
 }
+
+
+
+class OdomLog {
+public:
+  
+  OdomLog(double time_stamp_, double tx_, double ty_, double tz_, 
+	  double qw_, double qx_, double qy_, double qz_) : 
+	  time_stamp(time_stamp_), tx(tx_), ty(ty_), tz(tz_), qw(qw_), qx(qx_), qy(qy_), qz(qz_) {}
+  
+  void matrixCast(cv::Mat & T) {
+    
+    T = cv::Mat::eye(4,4,CV_32F);
+    cv::Mat Rmat = cv::Mat::eye(3,3,CV_32F);
+    QUAT2DCM_float(qw, qx, qy, qz, Rmat);
+    Rmat.copyTo(T.rowRange(0,3).colRange(0,3));
+    T.at<float>(0,3) = tx;
+    T.at<float>(1,3) = ty;
+    T.at<float>(2,3) = tz;
+    
+    //cout << Tmat << endl;
+  }
+  
+  double time_stamp;
+  double tx, ty, tz;
+  double qw, qx, qy, qz;
+  
+};
+
+struct OdomLogComparator {
+    bool operator()(double const& t0, OdomLog const& m1) const {
+        return t0 < m1.time_stamp;
+    }
+    
+    bool operator()(OdomLog const& m0, double const& t1) const {
+        return m0.time_stamp < t1;
+    }
+};
+
 
 }
 
