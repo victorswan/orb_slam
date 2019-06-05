@@ -1,13 +1,13 @@
 # Good Feature Matching Version of ORB-SLAM2
 
-Good feature matching is an enhancement module that is designed for feature-based BA SLAM, such as ORB-SLAM2.  The main advantage of good feature matching, as opposed to the conventional batch feature matching, is the better trade-off of performance-efficiency.  
+Good feature matching (IROS18, TRO19) is an enhancement module that is designed for feature-based BA SLAM, such as ORB-SLAM2.  The main advantage of good feature matching, as opposed to the conventional batch feature matching, is the better trade-off of performance-efficiency.  
 
 <figure>
   <img src="https://github.com/YipuZhao/GF_ORB_SLAM/blob/master/batch_script/RMSE_vs_Latency_EuRoC.png" alt="EuRoC" style="width:100%">
   <figcaption>Performance vs. latency evaluation on EuRoC monocular sequences (left-cam only)</figcaption>
 </figure>
 
-Compared with the previous version of [GF](https://github.com/YipuZhao/GF_ORB_SLAM), we also introduce map hashing, which is designed to bound the cost of lcoal map related operations in long-term, large-scale VSLAM.  
+Compared with the previous version of [GF](https://github.com/YipuZhao/GF_ORB_SLAM), we also introduce map hashing (ICRA19), which is designed to bound the cost of lcoal map related operations in long-term, large-scale VSLAM.  
 
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=mnIf4PPqGHY
 " target="_blank"><img src="https://github.com/YipuZhao/gf_orb_slam2/blob/catkin/maphash_demo.png" 
@@ -32,19 +32,22 @@ Then build dependencies for good feature by calling
 
 	cd gf_orb_slam2 && ./build_dep.sh && ./build_supports.sh
 
-Now build the GF-ORB-SLAM2 package
+Now build the GF-ORB-SLAM2 package with O3 flag:
 
+	catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG -march=native" -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG -march=native"
 	catkin build --this
 
-To run GF-ORB-SLAM2, please refer to some example batch evaluation scripts at folder 
+To run GF-ORB-SLAM2 on public benchmarks, please refer to batch evaluation scripts at folder 
 
 	batch_script
 
-Some example configurations for public benchmarks are available by cloning the following repo and place it at the same ros workspace as GF-ORB-SLAM2
+Or follow the example calls at rosrun_cmd.md for your own sensor / sequence. 
 
-	git clone git@github.com:YipuZhao/ORB_Data.git
+Similar to original ORB-SLAM2, the camera parameters shall be provided in yaml format.  Some example configurations for public benchmarks are available by cloning the following repo and place it at the same catkin workspace as GF-ORB-SLAM2
 
-## Reference(s)
+	cd ~/catkin_ws/src && git clone git@github.com:YipuZhao/ORB_Data.git
+
+## References
 
 If you use GF-ORB-SLAM2 in an academic work, please cite the following papers:
 	
@@ -69,6 +72,12 @@ If you use GF-ORB-SLAM2 in an academic work, please cite the following papers:
 	  pages={1183--1189},
 	  year={2018}
 	}
+
+## Contact information
+
+- Yipu Zhao		yipu.zhao@gatech.edu
+- Wenkai Ye		wye1206@gatech.edu
+- Patricio A. Vela	pvela@gatech.edu
 
 ---
 # ORB-SLAM2
