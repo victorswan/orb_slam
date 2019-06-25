@@ -20,6 +20,7 @@ As the central part of autonomous navigation stack developed at Georgia Tech IVA
  - map saving & loading modules (uncomment Macro **ENABLE_MAP_IO** in **Frame.h** to enable them)
  - Pose initialization with ChAruco (uncomment Macro **INIT_WITH_ARUCHO** in **Tracking.h** to enable it);
  - catkinize
+ - to be included ~~Good Graph BA~~
  - to be included ~~visual inertial fusion~~
 
 ## Build & Run
