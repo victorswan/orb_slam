@@ -27,7 +27,7 @@ As the central part of autonomous navigation stack developed at Georgia Tech IVA
 
 To build GF-ORB-SLAM2, first clone the repo to your catkin workspace
 
-	cd ~/catkin_ws/src && git clone git@github.com:YipuZhao/gf_orb_slam2.git && git checkout catkin
+	cd ~/catkin_ws/src && git clone git@github.com:ivalab/gf_orb_slam2.git && git checkout catkin
 
 Then build dependencies (by default we assume a GPU is available for opencv; otherwise use the non-gpu build cmd in build_dep.sh accordingly)
 
@@ -51,7 +51,7 @@ or follow the example calls at **rosrun_cmd.md** for your own sensor / sequence.
 
 Similar to original ORB-SLAM2, the camera parameters shall be provided in yaml format.  Some example configurations for public benchmarks are available by cloning the following repo and place it at the same catkin workspace as GF-ORB-SLAM2
 
-	cd ~/catkin_ws/src && git clone git@github.com:YipuZhao/ORB_Data.git
+	cd ~/catkin_ws/src && git clone git@github.com:ivalab/ORB_Data.git
 
 ## References
 
