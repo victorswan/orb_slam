@@ -3,14 +3,14 @@
 **Good feature matching** (IROS18, TRO19) is an enhancement module that is designed for feature-based BA SLAM, such as ORB-SLAM2.  The main advantage of good feature matching, as opposed to the conventional batch feature matching, is the better trade-off of performance-efficiency.  
 
 <figure>
-  <img src="https://github.com/YipuZhao/GF_ORB_SLAM/blob/master/batch_script/RMSE_vs_Latency_EuRoC.png" alt="EuRoC" style="width:100%">
+  <img src="https://github.com/ivalab/GF_ORB_SLAM/blob/master/batch_script/RMSE_vs_Latency_EuRoC.png" alt="EuRoC" style="width:100%">
   <figcaption>Performance vs. latency evaluation on EuRoC monocular sequences (left-cam only)</figcaption>
 </figure>
 
 Compared with the previous version of [GF](https://github.com/YipuZhao/GF_ORB_SLAM), we also introduce **Map Hashing** (ICRA19), which is designed to bound the cost of lcoal map related operations in long-term, large-scale VSLAM.  
 
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=mnIf4PPqGHY
-" target="_blank"><img src="https://github.com/YipuZhao/gf_orb_slam2/blob/catkin/maphash_demo.png" 
+" target="_blank"><img src="https://github.com/ivalab/gf_orb_slam2/blob/catkin/maphash_demo.png" 
 alt="SLAM View of MapHash vs. Baseline ORB" width="760" height="320" border="10" /></a>
 
 As the central part of autonomous navigation stack developed at Georgia Tech IVALab, GF-ORB-SLAM 2 supports **additional features** as follows:
