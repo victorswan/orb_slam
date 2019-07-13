@@ -22,6 +22,6 @@ echo "Uncompress vocabulary ..."
 cd ../ORB_Data
 tar -xf ORBvoc.txt.tar.gz
 
-cd ../gf_orb_slam2
-echo "Converting vocabulary to binary"
-./tools/bin_vocabulary
+# cd ../gf_orb_slam2
+# echo "Converting vocabulary to binary"
+# ./tools/bin_vocabulary
