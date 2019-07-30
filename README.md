@@ -70,31 +70,31 @@ If you use features in GF-ORB-SLAM2 at an academic work, please cite the followi
 	  year={2019}
 	}	
 
-	  @inproceedings{zhao2018good,
-	    title={Good Feature Selection for Least Squares Pose Optimization in VO/VSLAM},
-	    author={Zhao, Yipu and Vela, Patricio A},
-	    booktitle={IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
-	    pages={1183--1189},
-	    year={2018}
-	  }
+	@inproceedings{zhao2018good,
+	  title={Good Feature Selection for Least Squares Pose Optimization in VO/VSLAM},
+	  author={Zhao, Yipu and Vela, Patricio A},
+	  booktitle={IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+	  pages={1183--1189},
+	  year={2018}
+	}
 
 **Map Hashing**:
 
-     @article{zhao2019low,
-      title={Low-latency Visual SLAM with Appearance-Enhanced Local Map Building},
-      author={Zhao, Yipu and Ye, Wenkai and Vela, Patricio A},
-      journal={IEEE International Conference on Robotics and Automation (ICRA)},
-      year={2019}
-    }
+	@article{zhao2019low,
+	  title={Low-latency Visual SLAM with Appearance-Enhanced Local Map Building},
+	  author={Zhao, Yipu and Ye, Wenkai and Vela, Patricio A},
+	  journal={IEEE International Conference on Robotics and Automation (ICRA)},
+	  year={2019}
+	}
 
 **Good Graph Selection**:
 
-	  @article{zhao2019graph,
-	    title={Good Graph to Optimize: Cost-Effective, Budget-Aware Bundle Adjustment in Visual SLAM},
-	    author={Zhao, Yipu and Vela, Patricio A.},
-	    journal={submitted to IEEE Robotics and Automation Letters (RAL)},
-	    year={2019}
-	  } 
+	@article{zhao2019graph,
+	  title={Good Graph to Optimize: Cost-Effective, Budget-Aware Bundle Adjustment in Visual SLAM},
+	  author={Zhao, Yipu and Vela, Patricio A.},
+	  journal={submitted to IEEE Robotics and Automation Letters (RAL)},
+	  year={2019}
+	} 
 
 ## Contact information
 
