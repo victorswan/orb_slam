@@ -835,16 +835,16 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint>>& allKeypoint
 
 void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPoint>& _keypoints,
                                OutputArray _descriptors)
-{ 
+{
     PUSH_RANGE("ORBextractor", 0);
     if(_image.empty())
         return;
 
  //   cout << "pass empty check!" << endl;
-    
+
     Mat image = _image.getMat();
     assert(image.type() == CV_8UC1 );
-    
+
  //   cout << "pass type check!" << endl;
 
     // Pre-compute the scale pyramid
@@ -877,7 +877,7 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
         int nkeypointsLevel = (int)keypoints.size();
 
  //   cout << "nkeypointsLevel = " << nkeypointsLevel << endl;
-    
+
         if(nkeypointsLevel==0)
             continue;
 
@@ -912,7 +912,7 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
         _keypoints.insert(_keypoints.end(), keypoints.begin(), keypoints.end());
     }
     POP_RANGE;
-    
+
  //   cout << "done with keypoints!" << endl;
 }
 
@@ -1108,7 +1108,7 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
 
 void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPoint>& _keypoints,
                                OutputArray _descriptors)
-{ 
+{
     if(_image.empty())
         return;
 
@@ -1200,4 +1200,4 @@ void ORBextractor::ComputePyramid(cv::Mat image)
 #endif
 
 
-} //namespace ORB_SLAM
+} //namespace ORB_SLAM2

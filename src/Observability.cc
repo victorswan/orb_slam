@@ -82,10 +82,10 @@ void Observability::batchStripObsMat_Frame(const int start_idx, const int end_id
                     this->pFrame->mvbCandidate[i] == true) {
 
                 // skip if the Jacobian has already been built
-               // if (this->pFrame->mvbJacobBuilt[i] == true)
-               //     continue ;
-	      
-	                     if (pMP->updateAtFrameId == this->mnFrameId)
+                // if (this->pFrame->mvbJacobBuilt[i] == true)
+                //     continue ;
+
+                if (pMP->updateAtFrameId == this->mnFrameId)
                     continue ;
 
                 // Feature position
@@ -146,7 +146,7 @@ void Observability::batchStripObsMat_Frame(const int start_idx, const int end_id
                 }
 
                 //
-               // this->pFrame->mvbJacobBuilt[i] = true;
+                // this->pFrame->mvbJacobBuilt[i] = true;
                 pMP->updateAtFrameId = this->mnFrameId;
 
             } //Perform regular temporal obs update!
@@ -189,12 +189,12 @@ void Observability::batchHybridMat_Frame(const size_t start_idx, const size_t en
                     this->pFrame->mvbCandidate[i] == true) {
 
                 // skip if the Jacobian has already been built
-              //  if (this->pFrame->mvbJacobBuilt[i] == true)
-              //      continue ;
+                //  if (this->pFrame->mvbJacobBuilt[i] == true)
+                //      continue ;
 
-	                     if (pMP->updateAtFrameId == this->mnFrameId)
+                if (pMP->updateAtFrameId == this->mnFrameId)
                     continue ;
-		    
+
                 // Feature position
                 arma::rowvec Y = arma::zeros<arma::rowvec>(4);
                 cv::Mat Pw = pMP->GetWorldPos();
@@ -270,7 +270,7 @@ void Observability::batchHybridMat_Frame(const size_t start_idx, const size_t en
                 //                pMP->ObsScore = 1.0;
                 pMP->ObsScore = this->pFrame->mvpMatchScore[i];
                 //
-              //  this->pFrame->mvbJacobBuilt[i] = true;
+                //  this->pFrame->mvbJacobBuilt[i] = true;
                 pMP->updateAtFrameId = this->mnFrameId;
 
 #ifdef MULTI_THREAD_LOCK_ON
@@ -586,7 +586,7 @@ void Observability::batchInfoMat_Map(const size_t start_idx, const size_t end_id
         // apply cap on time cost
         timeCap = timer.toc();
         if (timeCap > time_for_build) {
-//            std::cout << "func batchInfoMat_Map: reach max time cap " << timeCap << std::endl;
+            //            std::cout << "func batchInfoMat_Map: reach max time cap " << timeCap << std::endl;
             break ;
         }
 

@@ -58,13 +58,14 @@
 namespace ORB_SLAM2
 {
 
-class PnPsolver {
- public:
-  PnPsolver(const Frame &F, const vector<MapPoint*> &vpMapPointMatches);
+class PnPsolver
+{
+public:
+  PnPsolver(const Frame &F, const vector<MapPoint *> &vpMapPointMatches);
 
   ~PnPsolver();
 
-  void SetRansacParameters(double probability = 0.99, int minInliers = 8 , int maxIterations = 300, int minSet = 4, float epsilon = 0.4,
+  void SetRansacParameters(double probability = 0.99, int minInliers = 8, int maxIterations = 300, int minSet = 4, float epsilon = 0.4,
                            float th2 = 5.991);
 
   cv::Mat find(vector<bool> &vbInliers, int &nInliers);
@@ -193,6 +194,6 @@ class PnPsolver {
 
 };
 
-} //namespace ORB_SLAM
+} // namespace ORB_SLAM2
 
 #endif //PNPSOLVER_H

@@ -29,8 +29,7 @@
 #include "Frame.h"
 #include "ORBVocabulary.h"
 
-#include<mutex>
-
+#include <mutex>
 
 namespace ORB_SLAM2
 {
@@ -38,40 +37,39 @@ namespace ORB_SLAM2
 class KeyFrame;
 class Frame;
 
-
 class KeyFrameDatabase
 {
 public:
 
     KeyFrameDatabase(const ORBVocabulary &voc);
 
-    void add(KeyFrame* pKF);
+    void add(KeyFrame *pKF);
 
-    void erase(KeyFrame* pKF);
+    void erase(KeyFrame *pKF);
 
     void clear();
 
     // Loop Detection
-    std::vector<KeyFrame *> DetectLoopCandidates(KeyFrame* pKF, float minScore);
+    std::vector<KeyFrame *> DetectLoopCandidates(KeyFrame *pKF, float minScore);
 
     // Relocalization
-    std::vector<KeyFrame*> DetectRelocalizationCandidates(Frame* F);
+    std::vector<KeyFrame *> DetectRelocalizationCandidates(Frame *F);
 
     // for map IO only
-    std::set<KeyFrame*> mvpKFset;
+    std::set<KeyFrame *> mvpKFset;
 
 protected:
 
     // Associated vocabulary
-    const ORBVocabulary* mpVoc;
+    const ORBVocabulary *mpVoc;
 
     // Inverted file
-    std::vector<list<KeyFrame*> > mvInvertedFile;
+    std::vector<list<KeyFrame *>> mvInvertedFile;
 
     // Mutex
     std::mutex mMutex;
 };
 
-} //namespace ORB_SLAM
+} // namespace ORB_SLAM2
 
 #endif

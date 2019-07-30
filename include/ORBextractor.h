@@ -25,11 +25,19 @@
 #include <list>
 #include <opencv/cv.h>
 
+#if !defined(__SSE3__) && !defined(__SSE2__) && !defined(__SSE1__)
+    #include "SSE2NEON.h"
+#endif
+
 // NOTE
 // for some reason the cuda fast only works on QVGA video;
 // with higher resolution inout, it will only extract fast 
 // from the top portion of the frame
+// use GPU to speed up FAST detection (you can only choose one of the two macros!)
 // #define CUDA_ACC_FAST
+
+// optimized for NEON in FAST detection (you can only choose one of the two macros!)
+// #define NEON_ACC_FAST
 
 #ifdef CUDA_ACC_FAST
     #include <opencv2/core/cuda.hpp>
@@ -40,9 +48,12 @@
     #include <cuda/Allocator.hpp>
     #include <cuda/Fast.hpp>
     #include <cuda/Orb.hpp>
+    #include "Util_cuda.hpp"
 #endif
 
-#include "Util_cuda.hpp"
+#ifdef NEON_ACC_FAST
+    #include "FAST_NEON.h"
+#endif
 
 
 namespace ORB_SLAM2
@@ -116,9 +127,13 @@ public:
     std::vector<cv::Mat> mvImagePyramid;
 #endif
 
+    // NOTE
+    // move to public member function for keypoint I/O
+    void ComputePyramid(cv::Mat image);
+
 protected:
 
-    void ComputePyramid(cv::Mat image);
+    // void ComputePyramid(cv::Mat image);
     void ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >& allKeypoints);
     std::vector<cv::KeyPoint> DistributeOctTree(const std::vector<cv::KeyPoint>& vToDistributeKeys, const int &minX,
                                                 const int &maxX, const int &minY, const int &maxY, const int &nFeatures, const int &level);
@@ -150,7 +165,7 @@ protected:
     std::vector<float> mvInvLevelSigma2;
 };
 
-} //namespace ORB_SLAM
+} // namespace ORB_SLAM2
 
 #endif
 

@@ -47,7 +47,35 @@
 
 
 // For map reuse and update
-#define ENABLE_MAP_IO
+// #define ENABLE_MAP_IO
+
+
+// For anticipation in good graph
+#define ENABLE_ANTICIPATION_IN_GRAPH
+
+
+#ifdef ENABLE_ANTICIPATION_IN_GRAPH
+
+    // adjust the budget of local BA with anticipation info. on-the-fly
+    #define ENABLE_ANTICIPATION_IN_BUDGET
+    // number of historical budget for online cost estimation
+    #define NUM_HISTORICAL_BUDGET   1 // 3 // 20 //
+
+    // number of virtual KF to be included in good graph
+    #define VIRTUAL_FRAME_NUM       1 // 2 //
+    // number of regular frames between virtual KF
+    // for EuRoC (20 fps)
+    // #define VIRTUAL_FRAME_STEP      10 // 5 //
+    // for Gazebo (30 fps)
+    #define VIRTUAL_FRAME_STEP      15
+
+    // #define ENABLE_PERTURBATION_TO_ODOM
+    // level of gaussian noise added to ground truth anticipation
+    #define ANTICIPATION_NOISE_TRAN_STD     0.0018 // 0.0035  // m per frame
+    #define ANTICIPATION_NOISE_ROTA_STD     0.0008 // 0.0015  // rad per frame
+
+#endif
+
 
 
 namespace ORB_SLAM2
@@ -106,6 +134,16 @@ public:
           cv::Mat &K_right, cv::Mat &distCoef_right, cv::Mat &R_right, cv::Mat &P_right,
           const float &bf, const float &thDepth);
 
+    // Modified constructor for lazy-stereo, as well as detection data I/O
+    Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp,
+          ORBextractor *extractorLeft, ORBextractor *extractorRight, ORBVocabulary *voc, cv::Mat &K,
+          cv::Mat &K_left, cv::Mat &distCoef_left, cv::Mat &R_left, cv::Mat &P_left,
+          cv::Mat &K_right, cv::Mat &distCoef_right, cv::Mat &R_right, cv::Mat &P_right,
+          const float &bf, const float &thDepth,
+          const std::vector<cv::KeyPoint> &vKeys_left,
+          const std::vector<cv::KeyPoint> &vKeys_right,
+          const cv::Mat &mDisc_left, const cv::Mat &mDisc_right);
+
     // Constructor for stereo cameras.
     Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp,
           ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K,
@@ -125,6 +163,9 @@ public:
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(int flag, const cv::Mat &im);
+
+    // Export detection results to YAML, which is easy to interpret and load
+    void ExportToYML(cv::FileStorage &fs);
 
     // Compute Bag of Words representation.
     void ComputeBoW();
@@ -381,6 +422,6 @@ private:
     cv::Mat mOw; //==mtwc
 };
 
-}// namespace ORB_SLAM
+} // namespace ORB_SLAM2
 
 #endif // FRAME_H

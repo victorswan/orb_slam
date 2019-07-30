@@ -640,7 +640,6 @@ public:
     void compute_SOM_In_Segment(const size_t seg_idx, const arma::mat Y, const arma::mat Z,
                                 arma::mat & curObsMat);
 
-
     // ============================ Active matching func =============================
 
     int runActiveMapMatching(Frame *pFrame,

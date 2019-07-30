@@ -35,11 +35,13 @@
 #include "../../../../include/MapPublisher.h"
 
 #include "nav_msgs/Odometry.h"
+#include "nav_msgs/Path.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "tf/transform_datatypes.h"
 #include <tf/transform_broadcaster.h>
 
 //
+//#include "path_smoothing_ros/cubic_spline_interpolator.h"
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <ros/publisher.h>
 
@@ -64,14 +66,17 @@ public:
     
     void GrabOdom(const nav_msgs::Odometry::ConstPtr& msg);
 
+    void GrabPath(const nav_msgs::Path::ConstPtr    & msg);
+
     ORB_SLAM2::System* mpSLAM;
     bool do_rectify;
     cv::Mat M1l,M2l,M1r,M2r;
     
-  double timeStamp;  
-  cv::Mat Tmat;
-  
+    double timeStamp;
+    cv::Mat Tmat;
+
     ros::Publisher mpCameraPosePublisher, mpCameraPoseInIMUPublisher;
+    //    ros::Publisher mpDensePathPub;
     
 #ifdef MAP_PUBLISH
     size_t mnMapRefreshCounter;
@@ -91,11 +96,11 @@ int main(int argc, char **argv)
 
     if(argc != 10)
     {
-	cerr << endl << "Usage: rosrun gf_orb_slam2 Stereo path_to_vocabulary path_to_settings budget_per_frame "
-	    << " do_rectify do_viz "
-	    << " topic_img_l topic_img_r path_to_traj path_to_map" << endl;
-	ros::shutdown();
-	return 1;
+        cerr << endl << "Usage: rosrun gf_orb_slam2 Stereo path_to_vocabulary path_to_settings budget_per_frame "
+             << " do_rectify do_viz "
+             << " topic_img_l topic_img_r path_to_traj path_to_map" << endl;
+        ros::shutdown();
+        return 1;
     }
 
     bool do_viz;
@@ -105,7 +110,11 @@ int main(int argc, char **argv)
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,do_viz);
 
-    SLAM.SetBudgetPerFrame(std::atoi(argv[3]));
+    SLAM.SetConstrPerFrame(std::atoi(argv[3]));
+
+    // convert budget input from ms to sec
+    // SLAM.SetBudgetPerFrame(FLAGS_budget_per_frame*1e-3);
+    
 
 #ifdef LOGGING_KF_LIST
     std::string fNameRealTimeBA = std::string(argv[8]) + "_Log_BA.txt";
@@ -194,7 +203,9 @@ int main(int argc, char **argv)
     sync.registerCallback(boost::bind(&ImageGrabber::GrabStereo, &igb, _1, _2));
     
     //
-    ros::Subscriber sub = nh.subscribe("/odom_sparse", 100, &ImageGrabber::GrabOdom, &igb);
+    //    ros::Subscriber sub = nh.subscribe("/odom_sparse", 100, &ImageGrabber::GrabOdom, &igb);
+    ros::Subscriber sub = nh.subscribe("/desired_path", 100, &ImageGrabber::GrabPath, &igb);
+    //    igb.mpDensePathPub = nh.advertise<nav_msgs::Path>("/dense_path", 100);
     
     // TODO
     // figure out the proper queue size
@@ -211,7 +222,7 @@ int main(int argc, char **argv)
 #endif
 
     while(ros::ok())
-	ros::spin();
+        ros::spin();
     // ros::spin();
 
     cout << "ros_stereo: done with spin!" << endl;
@@ -266,16 +277,55 @@ void ImageGrabber::GrabOdom(const nav_msgs::Odometry::ConstPtr& msg) {
     timeStamp = msg->header.stamp.toSec();
     
     mpSLAM->mpTracker->BufferingOdom(
-	timeStamp, 
-	msg->pose.pose.position.x, 
-	msg->pose.pose.position.y, 
-	msg->pose.pose.position.z, 
-	msg->pose.pose.orientation.w, 
-	msg->pose.pose.orientation.x, 
-	msg->pose.pose.orientation.y, 
-	msg->pose.pose.orientation.z
-    );
+                timeStamp,
+                msg->pose.pose.position.x,
+                msg->pose.pose.position.y,
+                msg->pose.pose.position.z,
+                msg->pose.pose.orientation.w,
+                msg->pose.pose.orientation.x,
+                msg->pose.pose.orientation.y,
+                msg->pose.pose.orientation.z
+                );
 }
+
+void ImageGrabber::GrabPath(const nav_msgs::Path::ConstPtr& msg) {
+    /*
+    ROS_INFO("Seq: [%d]", msg->header.seq);
+    ROS_INFO("Position-> x: [%f], y: [%f], z: [%f]", msg->pose.pose.position.x,msg->pose.pose.position.y, msg->pose.pose.position.z);
+    ROS_INFO("Orientation-> x: [%f], y: [%f], z: [%f], w: [%f]", msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
+    ROS_INFO("Vel-> Linear: [%f], Angular: [%f]", msg->twist.twist.linear.x,msg->twist.twist.angular.z);
+    */
+
+    //    // densify the path
+    //    // create a cubic spline interpolator
+    //    nav_msgs::Path path_dense;
+    //    // pointsPerUnit, skipPoints, useEndConditions, useMiddleConditions);
+    //    path_smoothing::CubicSplineInterpolator csi(double(100.0),
+    //                                                (unsigned int)0,
+    //                                                true,
+    //                                                true);
+    //    csi.interpolatePath(*msg, path_dense);
+
+    size_t N = msg->poses.size();
+    //    ROS_INFO("Size of path: before [%d] vs. after [%d]", msg->poses.size(), N);
+    for (size_t i=0; i<N; ++i) {
+
+        timeStamp = msg->poses[i].header.stamp.toSec();
+        mpSLAM->mpTracker->BufferingOdom(
+                    timeStamp,
+                    msg->poses[i].pose.position.x,
+                    msg->poses[i].pose.position.y,
+                    msg->poses[i].pose.position.z,
+                    msg->poses[i].pose.orientation.w,
+                    msg->poses[i].pose.orientation.x,
+                    msg->poses[i].pose.orientation.y,
+                    msg->poses[i].pose.orientation.z
+                    );
+    }
+
+    //    mpDensePathPub.publish(path_dense);
+}
+
 
 
 void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight)

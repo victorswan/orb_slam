@@ -137,7 +137,7 @@ void Bucket::add(const Entry e/*, const int HashTableID*/)
 
     {
         // update current iterator
-//        boost::mutex::scoped_lock lock1(mMutexBucket);
+        //        boost::mutex::scoped_lock lock1(mMutexBucket);
         std::unique_lock<std::mutex> lock1(mMutexBucket);
         mIter = mEntries.begin();
     }
@@ -148,7 +148,7 @@ void Bucket::add(const Entry e/*, const int HashTableID*/)
     //        entries.pop_front();
     //    }
     {
-       std::unique_lock<std::mutex> lock2(mMutexLatest);
+        std::unique_lock<std::mutex> lock2(mMutexLatest);
         mLatest = e;
     }
 }
@@ -525,7 +525,7 @@ void MultiIndexHashing::initialize()
     mvvBuckets.resize(hashtable_num);
     for(int i=0; i!=hashtable_num; ++i){
         mvvBuckets[i] = std::vector<Bucket>(bucket_num_per_hashtable);
-//        cerr<<mvvBuckets[i].size()<<endl;
+        //        cerr<<mvvBuckets[i].size()<<endl;
     }
 }
 
@@ -848,7 +848,7 @@ void MultiIndexHashing::query(const unsigned int *pDesc, std::vector<Entry> &can
 
 void MultiIndexHashing::query(const unsigned int *pDesc, std::vector<Entry> &candidates, std::vector<Entry> &addi_candidates, std::vector<int> &nfeatures)
 {
-//    std::unique_lock<mutex> lock(mMutexUpdate);
+    //    std::unique_lock<mutex> lock(mMutexUpdate);
 
     std::vector<size_t> bucket_idx(hashtable_num);
     //    if(nactive_tables == NULL)
@@ -871,7 +871,7 @@ void MultiIndexHashing::query(const unsigned int *pDesc, std::vector<Entry> &can
 
             // query the features stored in the same entry
             std::vector<Entry> entries;
-//            hashtables[k].getEntries(bucket_id, entries, nfeatures[k] + dynamics);
+            //            hashtables[k].getEntries(bucket_id, entries, nfeatures[k] + dynamics);
             mvvBuckets[k][bucket_id].back(entries, nfeatures[k] + dynamics);
 
             // merge features in all the entries

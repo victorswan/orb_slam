@@ -30,9 +30,8 @@
 
 #include "ORBmatcher.h"
 
-#include<mutex>
-#include<thread>
-
+#include <mutex>
+#include <thread>
 
 namespace ORB_SLAM2
 {
@@ -61,6 +60,7 @@ void LoopClosing::SetLocalMapper(LocalMapping *pLocalMapper)
 {
     mpLocalMapper=pLocalMapper;
 }
+
 
 void LoopClosing::Run()
 {
@@ -96,7 +96,7 @@ void LoopClosing::Run()
 //            }
         }
 
-#endif
+#endif       
 
         ResetIfRequested();
 
@@ -563,6 +563,7 @@ void LoopClosing::CorrectLoop()
     // Fuse duplications.
     SearchAndFuse(CorrectedSim3);
 
+
     // After the MapPoint fusion, new links in the covisibility graph will appear attaching both sides of the loop
     map<KeyFrame*, set<KeyFrame*> > LoopConnections;
 
@@ -583,7 +584,7 @@ void LoopClosing::CorrectLoop()
             LoopConnections[pKFi].erase(*vit2);
         }
     }
-    
+
     // Optimize graph
     Optimizer::OptimizeEssentialGraph(mpMap, mpMatchedKF, mpCurrentKF, NonCorrectedSim3, CorrectedSim3, LoopConnections, mbFixScale);
 
@@ -600,9 +601,9 @@ void LoopClosing::CorrectLoop()
     mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment,this,mpCurrentKF->mnId);
 
     // Loop closed. Release Local Mapping.
-    mpLocalMapper->Release();
+    mpLocalMapper->Release();    
 
-    mLastLoopKFid = mpCurrentKF->mnId;
+    mLastLoopKFid = mpCurrentKF->mnId;   
 }
 
 void LoopClosing::SearchAndFuse(const KeyFrameAndPose &CorrectedPosesMap)
@@ -760,7 +761,7 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
 
                     pMP->SetWorldPos(Rwc*Xc+twc);
                 }
-            }
+            }            
 
             mpMap->InformNewBigChange();
 

@@ -26,6 +26,7 @@
 #include <pangolin/pangolin.h>
 #include <iomanip>
 #include <time.h>
+#include <random>
 
 //
 #include <boost/filesystem.hpp>
@@ -416,8 +417,10 @@ void System::SetRealTimeFileStream(const string &track_fname, const string &BA_f
     mpTracker->SetRealTimeFileStream(track_fname);
     std::cout << "mpTracker real time output to " << track_fname << std::endl;
     //
+#ifdef LOGGING_KF_LIST
     mpLocalMapper->SetRealTimeFileStream(BA_fname);
     std::cout << "mpLocalMapper real time output to " << BA_fname << std::endl;
+#endif
 }
 
 void System::SetRealTimeFileStream(const string &filename)
@@ -426,16 +429,29 @@ void System::SetRealTimeFileStream(const string &filename)
     std::cout << "mpTracker real time output to " << filename << std::endl;
 }
 
-void System::SetBudgetPerFrame(const size_t budget_per_frame)
+
+void System::SetBudgetPerFrame(const double budget_per_frame)
 {
-    mpTracker->num_good_constr_predef = budget_per_frame;
+    mpTracker->time_track_budget = budget_per_frame;
+    std::cout << "mpTracker budget_per_frame adjusted to " << mpTracker->time_track_budget << std::endl;
+
+#ifdef ENABLE_ANTICIPATION_IN_GRAPH
+    mpTracker->mVFrameInteval = VIRTUAL_FRAME_STEP * mpTracker->time_track_budget;
+    std::cout << "mpTracker mVFrameInteval adjusted to " << mpTracker->mVFrameInteval << std::endl;
+#endif
+}
+
+void System::SetConstrPerFrame(const size_t constr_per_frame)
+{
+    mpTracker->num_good_constr_predef = constr_per_frame;
 #ifdef ORB_SLAM_BASELINE
     // baseline only
     // re-create orb extractor with the defined budget per frame
     mpTracker->updateORBExtractor();
 #endif
-    std::cout << "mpTracker budget adjusted to " << mpTracker->num_good_constr_predef << std::endl;
+    std::cout << "mpTracker constraint adjusted to " << mpTracker->num_good_constr_predef << std::endl;
 }
+
 
 void System::GrabAllLmkLog() {
 
@@ -491,7 +507,8 @@ void System::SaveTrackingLog(const string &filename) {
     fFrameTimeLog << "#frame_time_stamp time_ORB_extraction time_track_motion time_track_frame time_track_map time_match ..." << std::endl;
     for(size_t i=0; i<mpTracker->mFrameTimeLog.size(); i++)
     {
-         fFrameTimeLog << setprecision(6)
+
+        fFrameTimeLog << setprecision(6)
                       << mpTracker->mFrameTimeLog[i].frame_time_stamp << " "
                       << mpTracker->mFrameTimeLog[i].time_rectification + mpTracker->mFrameTimeLog[i].time_ORB_extraction << " "
                       << mpTracker->mFrameTimeLog[i].time_track_motion << " "
@@ -529,19 +546,43 @@ void System::SaveMappingLog(const string &filename) {
     fBATimeLog.open(filename.c_str());
     fBATimeLog << fixed;
     fBATimeLog << "#frame_time_stamp time_proc_new_keyframe time_culling time_tri_new_map_point time_srh_more_neighbor time_local_BA num_fixed_KF num_free_KF num_Point" << std::endl;
-    for(size_t i=0; i<mpLocalMapper->mBATimeLog.size(); i++)
+    for(size_t i=0; i<mpLocalMapper->mvBATimeLog.size(); i++)
     {
+        //        fBATimeLog << setprecision(6)
+        //                   << mpLocalMapper->mBATimeLog[i].frame_time_stamp << " "
+        //                   << mpLocalMapper->mBATimeLog[i].time_proc_new_keyframe << " "
+        //                   << mpLocalMapper->mBATimeLog[i].time_culling << " "
+        //                   << mpLocalMapper->mBATimeLog[i].time_tri_new_map_point << " "
+        //                   << mpLocalMapper->mBATimeLog[i].time_srh_more_neighbor << " "
+        //                   << mpLocalMapper->mBATimeLog[i].time_local_BA << " "
+        //                   << setprecision(0)
+        //                   << mpLocalMapper->mBATimeLog[i].num_fixed_KF << " "
+        //                   << mpLocalMapper->mBATimeLog[i].num_free_KF << " "
+        //                   << mpLocalMapper->mBATimeLog[i].num_Point << std::endl;
+
         fBATimeLog << setprecision(6)
-                   << mpLocalMapper->mBATimeLog[i].frame_time_stamp << " "
-                   << mpLocalMapper->mBATimeLog[i].time_proc_new_keyframe << " "
-                   << mpLocalMapper->mBATimeLog[i].time_culling << " "
-                   << mpLocalMapper->mBATimeLog[i].time_tri_new_map_point << " "
-                   << mpLocalMapper->mBATimeLog[i].time_srh_more_neighbor << " "
-                   << mpLocalMapper->mBATimeLog[i].time_local_BA << " "
+                   << mpLocalMapper->mvBATimeLog[i].frame_time_stamp << " "
+                   << mpLocalMapper->mvBATimeLog[i].time_proc_new_keyframe << " "
+                   << mpLocalMapper->mvBATimeLog[i].time_culling << " "
+                   << mpLocalMapper->mvBATimeLog[i].time_tri_new_map_point << " "
+                   << mpLocalMapper->mvBATimeLog[i].time_srh_more_neighbor << " "
+                   << mpLocalMapper->mvBATimeLog[i].time_local_BA << " "
+                      //
+                   << mpLocalMapper->mvBATimeLog[i].time_gg_prediction << " "
+                   << mpLocalMapper->mvBATimeLog[i].time_gg_insert_vertex << " "
+                   << mpLocalMapper->mvBATimeLog[i].time_gg_jacobian << " "
+                   << mpLocalMapper->mvBATimeLog[i].time_gg_rnd_query << " "
+                   << mpLocalMapper->mvBATimeLog[i].time_gg_schur << " "
+                   << mpLocalMapper->mvBATimeLog[i].time_gg_permute << " "
+                   << mpLocalMapper->mvBATimeLog[i].time_gg_cholesky << " "
+                   << mpLocalMapper->mvBATimeLog[i].time_gg_postproc << " "
+                   << mpLocalMapper->mvBATimeLog[i].time_gg_optimization << " "
+                      // add 1 more column for budget
+                   << mpLocalMapper->mvBATimeLog[i].time_gg_lba_budget << " "
                    << setprecision(0)
-                   << mpLocalMapper->mBATimeLog[i].num_fixed_KF << " "
-                   << mpLocalMapper->mBATimeLog[i].num_free_KF << " "
-                   << mpLocalMapper->mBATimeLog[i].num_Point << std::endl;
+                   << mpLocalMapper->mvBATimeLog[i].num_fixed_KF << " "
+                   << mpLocalMapper->mvBATimeLog[i].num_free_KF << " "
+                   << mpLocalMapper->mvBATimeLog[i].num_Point << std::endl;
     }
     fBATimeLog.close();
 }
@@ -754,12 +795,103 @@ static void FindAllFilesInDir( const std::string & dir, const std::string & ext,
 }
 
 void System::ForceRelocTracker() {
-        mpTracker->ForceReloc();
-    }
+    mpTracker->ForceReloc();
+}
 
 void System::ForceInitTracker() {
-        mpTracker->ForceInit();
+    mpTracker->ForceInit();
+}
+
+
+#if defined ENABLE_ANTICIPATION_IN_GRAPH || defined PRED_WITH_ODOM
+//
+void System::LoadOdomPlanned(const std::string &odom_path) {
+    ifstream f;
+    mpTracker->ResetOdomBuffer();
+
+    f.open(odom_path.c_str());
+    if (f.is_open()) {
+        size_t count = 0;
+        std::string line;
+        while (std::getline(f, line))
+        {
+            //            cout << line << endl;
+            std::istringstream iss(line);
+            double time_stamp, tx, ty, tz, qw, qx, qy, qz;
+            if (!(iss >> time_stamp >> tx >> ty >> tz >> qx >> qy >> qz >> qw))
+                break; // error
+
+            // process
+            //            cv::Mat R = pKF->GetRotation().t();
+            //            vector<float> q = Converter::toQuaternion(R);
+            //            cv::Mat t = pKF->GetCameraCenter();
+            //            f << setprecision(6) << pKF->mTimeStamp << setprecision(7) << " " << t.at<float>(0) << " " << t.at<float>(1) << " " << t.at<float>(2)
+            //              << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+            cv::Mat Tcw, Twc;
+            Eigen::Quaterniond quat(qw, qx, qy, qz);
+            Eigen::Vector3d tran(tx, ty, tz);
+
+            // add noise to ground truth odometry
+#ifdef ENABLE_PERTURBATION_TO_ODOM
+
+            //            std::cout << "Before perturbation: " << std::endl;
+            //            std::cout << "tx = " << tran(0) << ", ty = " << tran(1) << ", tz = " << tran(2) << std::endl;
+            //            std::cout << "qw = " << quat.w() << ", qx = " << quat.x() << ", qy = " << quat.y() << ", qz = " << quat.z() << std::endl;
+
+            std::random_device rd; // obtain a random number from hardware
+            std::mt19937 eng(rd()); // seed the generator
+            std::uniform_int_distribution<> distr(0, 100); // define the range
+
+            double ex = double(distr(eng)) * ANTICIPATION_NOISE_ROTA_STD / 100.0f;
+            double ey = double(distr(eng)) * ANTICIPATION_NOISE_ROTA_STD / 100.0f;
+            double ez = double(distr(eng)) * ANTICIPATION_NOISE_ROTA_STD / 100.0f;
+            double enorm = sqrt(ex*ex + ey*ey + ez*ez);
+            Eigen::AngleAxis<double> eang(enorm, Eigen::Vector3d(ex/enorm, ey/enorm, ez/enorm));
+            Eigen::Quaterniond qErr( eang );
+            //            Eigen::Quaterniond qErr(sqrt(1 - ex*ex - ey*ey - ez*ez), ex, ey, ez);
+            Eigen::Vector3d tErr( double(distr(eng)) * ANTICIPATION_NOISE_TRAN_STD / 100.0f,
+                                  double(distr(eng)) * ANTICIPATION_NOISE_TRAN_STD / 100.0f,
+                                  double(distr(eng)) * ANTICIPATION_NOISE_TRAN_STD / 100.0f );
+            //
+            quat *= qErr;
+            quat.normalize();
+            tran += tErr;
+
+            //            std::cout << "After perturbation: " << std::endl;
+            //            std::cout << "tx = " << tran(0) << ", ty = " << tran(1) << ", tz = " << tran(2) << std::endl;
+            //            std::cout << "qw = " << quat.w() << ", qx = " << quat.x() << ", qy = " << quat.y() << ", qz = " << quat.z() << std::endl;
+#endif
+
+//            g2o::SE3Quat g_wc = g2o::SE3Quat(quat, tran);
+//            Twc = Converter::toCvMat(g_wc);
+//            //
+//            //            Tcw = Twc.inv();
+//            cv::Mat Rcw = Twc.rowRange(0, 3).colRange(0, 3).t();
+//            cv::Mat tcw = -Rcw * Twc.rowRange(0, 3).col(3);
+//            Tcw = cv::Mat::eye(4, 4, CV_32F);
+//            Rcw.copyTo(Tcw.rowRange(0, 3).colRange(0, 3));
+//            tcw.copyTo(Tcw.rowRange(0, 3).col(3));
+
+//            mpTracker->AddOdomPlanned(time_stamp, Tcw);
+
+            // NOTE
+            // the t & q vector inserted here are for Twc
+            mpTracker->BufferingOdom(time_stamp, tran(0), tran(1), tran(2),
+                                     quat.w(), quat.x(), quat.y(), quat.z());
+            count ++;
+        }
+        f.close();
+        std::cout << "func LoadOdomPlanned: " << count << " records loaded!" << std::endl;
     }
+    else {
+        std::cout << "func LoadOdomPlanned: Unable to open file " << odom_path << std::endl;
+    }
+    //    f.close();
+    //    cout << endl
+    //         << "planned trajectory loaded!" << endl;
+}
+
+#endif
 
 //
 // NOTE
@@ -906,6 +1038,49 @@ void System::LoadMap(const std::string & map_path) {
         max_Pt_Id = max(pMP->mnId, max_Pt_Id);
     }//end of creating MapPoints
 
+    //    //loading Reference MapPoints..
+    //    cout<<"loading Reference MapPoints.."<<endl;
+    //    vector<ORB_SLAM2::MapPoint*> vpRMPs;
+    //    vector<vector<int> > mObservations_firstVectorR;//reference
+    //    vector<vector<int> > mObservations_secondVectorR;//reference
+    //    vector<double> mRefKFVectorR;//reference
+    //    std::unordered_map<long unsigned int, ORB_SLAM2::MapPoint*> id2pRMPmap;
+
+    //    std::list<std::string> RM_file_list;
+    //    size_t RM_file_maxlen;
+    //    FindAllFilesInDir(map_path + "/RMapPoints", ".yml", &RM_file_list, RM_file_maxlen);
+
+    //    for(auto iter = RM_file_list.begin(); iter != RM_file_list.end(); iter ++){
+    //        //        string MPfileName = ros::package::getPath("ORB_SLAM")+"/bin/RMapPoints/car_sample/"+"rmappoint_" + boost::to_string(i) + ".yml";
+    //        //        std::string MPfileName = map_path + "/RMapPoints/rmappoint_" + boost::to_string(i) + ".yml";
+    //        std::string MPfileName = map_path + "/RMapPoints/" + *iter;
+
+    //        cv::FileStorage fs(MPfileName.c_str(), cv::FileStorage::READ);
+    //        if(!fs.isOpened()) {
+    //            cout<<"no such file!"<<endl;
+    //            continue ;
+    //        }
+
+    //        ORB_SLAM2::MapPoint* pRMP = new ORB_SLAM2::MapPoint();
+
+    //        mObservations_first.clear();
+    //        fs["mObservations_first"] >> mObservations_first;
+    //        mObservations_firstVectorR.push_back(mObservations_first);
+    //        //
+    //        mObservations_second.clear();
+    //        fs["mObservations_second"] >> mObservations_second;
+    //        mObservations_secondVectorR.push_back(mObservations_second);
+
+    //        double mRefKF;
+    //        fs["mRefKF"] >> mRefKF;
+    //        mRefKFVectorR.push_back(mRefKF);
+
+    //        id2pRMPmap[pRMP->mnId] = pRMP;
+    //        vpRMPs.push_back(pRMP);
+
+    //        fs.release();
+    //    }//end of creating Reference MapPoints
+
     //Assigning KeyFrames..
     cout<<"Assigning KeyFrames.."<<endl;
     //    cout << "map_ID_2_KF.find(1) = " << map_ID_2_KF.find(1)->second << endl;
@@ -1044,6 +1219,33 @@ void System::LoadMap(const std::string & map_path) {
         //            vpMPs[i]->SetReferenceKeyFrame(NULL);
     }
 
+    //    //Assigning Reference MapPoints..
+    //    cout<<"Assigning Reference MapPoints.."<<endl;
+    //    for(size_t i = 0; i < vpRMPs.size(); i++){
+    //        //loading mObservations
+    //        vector<int> mObservations_firstR = mObservations_firstVectorR[i];
+    //        vector<int> mObservations_secondR = mObservations_secondVectorR[i];
+
+    //        assert(mObservations_firstR.size() == mObservations_secondR.size());
+    //        for(size_t j = 0; j < mObservations_secondR.size(); j++){
+    //            //            vpRMPs[i]->mObservations[id2pKFmap[mObservations_first[j]]] = mObservations_second[j];
+    //            //            if (mObservations_first[j] >= 0) {\auto iter = id2pKFmap.find((unsigned long)(mObservations_first[j]));
+    //            auto iter = id2pKFmap.find((unsigned long)(mObservations_firstR[j]));
+    //            if (iter != id2pKFmap.end() && iter->second != NULL) {
+    //                vpRMPs[i]->AddObservation(iter->second, mObservations_secondR[j]);
+    //            }
+    //            //                auto it = id2pKFmap.find(mObservations_first[j]);
+    //            //                if (it != id2pKFmap.end())
+    //            //                    vpMPs[i]->AddObservation(it->second, mObservations_second[j]);
+    //            //            }
+    //        }
+    //        //loading mpRefKF
+    //        double mRefKF = mRefKFVectorR[i];
+    //        //        vpRMPs[i]->mpRefKF = id2pKFmap[mRefKF];
+    //        if (mRefKF >= 0)
+    //            vpRMPs[i]->SetReferenceKeyFrame(id2pKFmap[mRefKF]);
+    //    }
+
     vector<ORB_SLAM2::MapPoint*> vpRMPs;
     ifstream fin;
     cout << endl << "Loading Reference MapPoints mnIds from RMp_idList.txt" << endl;
@@ -1082,11 +1284,11 @@ void System::LoadMap(const std::string & map_path) {
             mpKeyFrameDatabase->add(vpKFs[i]);
 
     // set the 1st KF as reloc reference
-   // unsigned long firstKFId;
+    // unsigned long firstKFId;
     size_t i = 0;
     for(; i < vpKFs.size(); i++)
         if (!vpKFs[i]->isBad()) {
-   //         firstKFId = vpKFs[i]->mnId;
+            //         firstKFId = vpKFs[i]->mnId;
             break ;
         }
     //    long unsigned int lastKFId = vpKFs[vpKFs.size()-1]->mnId;
@@ -1129,6 +1331,12 @@ void System::SaveMap(const std::string & map_path) {
         if (boost::filesystem::create_directory(dir_Map))
             std::cout << "Successfully Created Sub-Dir For Map Points!" << std::endl;
     }
+
+    //    boost::filesystem::path dir_RMap(map_path + "/RMapPoints");
+    //    if(!(boost::filesystem::exists(dir_RMap))){
+    //        if (boost::filesystem::create_directory(dir_RMap))
+    //            std::cout << "Successfully Created Dire For Ref Map Points!" << std::endl;
+    //    }
 
     //
     // grab all keyframes
@@ -1209,9 +1417,10 @@ void System::SaveMap(const std::string & map_path) {
     }
 
     //save reference mappoints////////////////////////////////////////////////////////////////////////////////////
-    vector<ORB_SLAM2::MapPoint*> vpRMPs = mpMap->GetReferenceMapPoints();
-    sort(vpRMPs.begin(),vpRMPs.end(),ORB_SLAM2::MapPoint::isLessID);
-    cout << endl << "Saving Reference MapPoints mnIds to RMp_idList.txt" << endl;
+    vector<ORB_SLAM2::MapPoint *> vpRMPs = mpMap->GetReferenceMapPoints();
+    sort(vpRMPs.begin(), vpRMPs.end(), ORB_SLAM2::MapPoint::isLessID);
+    cout << endl
+         << "Saving Reference MapPoints mnIds to RMp_idList.txt" << endl;
     strFile = map_path + "/RMp_idList.txt";
 
     fout.open(strFile.c_str());
@@ -1227,7 +1436,7 @@ void System::SaveMap(const std::string & map_path) {
     fout.close();
     
     // Export map point to PCD file; for viz
-   /* cout << endl << "Saving MapPoints to PCD file" << endl;
+    /* cout << endl << "Saving MapPoints to PCD file" << endl;
     strFile = map_path + "/Map_3D_cloud.pcd";
     fout.open(strFile.c_str());
     fout << "# .PCD v.7 - Point Cloud Data file format" << endl;
@@ -1247,14 +1456,14 @@ void System::SaveMap(const std::string & map_path) {
       ORB_SLAM2::MapPoint* pMP = vpMPs[i];
       cv::Mat p3d = pMP->GetWorldPos();
       for (size_t j=0; j<3; ++j)
-	fout << p3d[j] << " ";
+    fout << p3d[j] << " ";
       fout << pMP->GetFoundRatio() << endl;
     }
     fout.close();
 */
-   
+
 }
 
 #endif
 
-} //namespace ORB_SLAM
+} // namespace ORB_SLAM2

@@ -26,28 +26,28 @@ namespace ORB_SLAM2
 {
 
 ChArUco::ChArUco(const cv::Mat &camMatrix_, 
-		 const cv::Mat &distCoeffs_, 
-		 const std::string &paramsFile_, 
-		 const bool &showRejected_, 
-		 const bool &refindStrategy_)
+                 const cv::Mat &distCoeffs_,
+                 const std::string &paramsFile_,
+                 const bool &showRejected_,
+                 const bool &refindStrategy_)
 {
     
-  showRejected = showRejected_;
-  refindStrategy = refindStrategy_;
-  
-  camMatrix_.copyTo(camMatrix);
-  distCoeffs_.copyTo(distCoeffs);
-  
-  if (loadParameters(paramsFile_)) {
-    dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionaryId));
+    showRejected = showRejected_;
+    refindStrategy = refindStrategy_;
 
-    charucoboard = cv::aruco::CharucoBoard::create(squaresX, squaresY, squareLength, markerLength, dictionary);
-    board = charucoboard.staticCast<cv::aruco::Board>();
-      std::cout << "succeed to load chArUco parameters!" << std::endl;
-  }
+    camMatrix_.copyTo(camMatrix);
+    distCoeffs_.copyTo(distCoeffs);
+
+    if (loadParameters(paramsFile_)) {
+        dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionaryId));
+
+        charucoboard = cv::aruco::CharucoBoard::create(squaresX, squaresY, squareLength, markerLength, dictionary);
+        board = charucoboard.staticCast<cv::aruco::Board>();
+        std::cout << "succeed to load chArUco parameters!" << std::endl;
+    }
     else {
-      // failed
-      std::cout << "failed to load chArUco parameters!" << std::endl;
+        // failed
+        std::cout << "failed to load chArUco parameters!" << std::endl;
     }
 }
 
@@ -92,7 +92,7 @@ bool ChArUco::loadParameters(const std::string &filename)
 bool ChArUco::process(const cv::Mat& image, cv::Mat & Twc) {
 
     std::vector< int > markerIds, charucoIds;
-// This is the most important part about ORB SLAM the vector vector markerCorners
+    // This is the most important part about ORB SLAM the vector vector markerCorners
     std::vector< std::vector< cv::Point2f > > markerCorners, rejectedMarkers;
     std::vector< cv::Point2f > charucoCorners;
     
@@ -115,14 +115,14 @@ bool ChArUco::process(const cv::Mat& image, cv::Mat & Twc) {
         // Print out
         std::cout << "rvec = " << rvec <<std::endl;
         std::cout << "tvec = " << tvec <<std::endl;
-	
-	// Assemble into homo matrix
-	cv::Mat Rmat = cv::Mat(3, 3, CV_32F);
-	cv::Rodrigues(rvec, Rmat);
-	Rmat.copyTo(Twc.rowRange(0,3).colRange(0,3));
-	Twc.at <float>(0,3) = tvec [0];
-	Twc.at <float>(1,3) = tvec [1];
-	Twc.at <float>(2,3) = tvec [2];
+
+        // Assemble into homo matrix
+        cv::Mat Rmat = cv::Mat(3, 3, CV_32F);
+        cv::Rodrigues(rvec, Rmat);
+        Rmat.copyTo(Twc.rowRange(0,3).colRange(0,3));
+        Twc.at <float>(0,3) = tvec [0];
+        Twc.at <float>(1,3) = tvec [1];
+        Twc.at <float>(2,3) = tvec [2];
     }
 
 #ifdef VIZ_ARUCO
@@ -142,12 +142,12 @@ bool ChArUco::process(const cv::Mat& image, cv::Mat & Twc) {
     }
 
     if (validPose) {
-    float axisLength = 0.5f * ((float)std::min(squaresX, squaresY) * (squareLength));
+        float axisLength = 0.5f * ((float)std::min(squaresX, squaresY) * (squareLength));
         cv::aruco::drawAxis(image_viz, camMatrix, distCoeffs, rvec, tvec, axisLength);
     }
     
- cv::imwrite( "/home/yipu/catkin_ws/src/GF_ORB_SLAM2/charuco_Image.jpg", image_viz );
- cv::namedWindow( "Gray image", cv::WINDOW_AUTOSIZE );
+    cv::imwrite( "/home/yipu/catkin_ws/src/GF_ORB_SLAM2/charuco_Image.jpg", image_viz );
+    cv::namedWindow( "Gray image", cv::WINDOW_AUTOSIZE );
     cv::imshow("chArUco_board_detection", image_viz);
     cvWaitKey(0);
 

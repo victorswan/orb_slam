@@ -88,10 +88,10 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
 
     N = mvKeys.size();
 
-    // cout << "number of keypoints detected: left = " << mvKeys.size() << "; right = " << mvKeysRight.size() << endl;
-
     if(mvKeys.empty())
         return;
+
+    //    cout << "number of keypoints detected: left = " << mvKeys.size() << "; right = " << mvKeysRight.size() << endl;
 
 #ifdef ALTER_STEREO_MATCHING
     //
@@ -147,7 +147,107 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     //    cout << "-------- mbf = " << mbf << "; fx = " << fx << "; mb = " << mb << endl;
 
     AssignFeaturesToGrid();
+}
 
+Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp,
+             ORBextractor *extractorLeft, ORBextractor *extractorRight, ORBVocabulary *voc, cv::Mat &K,
+             cv::Mat &K_left, cv::Mat &distCoef_left, cv::Mat &R_left, cv::Mat &P_left,
+             cv::Mat &K_right, cv::Mat &distCoef_right, cv::Mat &R_right, cv::Mat &P_right,
+             const float &bf, const float &thDepth,
+             const std::vector<cv::KeyPoint> &vKeys_left, const std::vector<cv::KeyPoint> &vKeys_right,
+             const cv::Mat &mDisc_left, const cv::Mat &mDisc_right)
+    : mpORBextractorLeft(extractorLeft), mpORBextractorRight(extractorRight), mTimeStamp(timeStamp), mK(K.clone()),
+      mK_ori(K_left.clone()), mDistCoef(distCoef_left.clone()), mR(R_left.clone()), mP(P_left.clone()),
+      mK_right(K_right.clone()), mDistCoef_right(distCoef_right.clone()), mR_right(R_right.clone()), mP_right(P_right.clone()),
+      mbf(bf), mThDepth(thDepth), mpORBvocabulary(voc), mpReferenceKF(static_cast<KeyFrame *>(NULL)),
+      mvKeys(vKeys_left), mvKeysRight(vKeys_right), mDescriptors(mDisc_left), mDescriptorsRight(mDisc_right)
+{
+    // Frame ID
+    mnId = nNextId++;
+
+    // Scale Level Info
+    mnScaleLevels = mpORBextractorLeft->GetLevels();
+    mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
+    mfLogScaleFactor = log(mfScaleFactor);
+    mvScaleFactors = mpORBextractorLeft->GetScaleFactors();
+    mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
+    mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
+    mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
+
+    // ORB extraction
+    //    thread threadLeft(&Frame::ExtractORB,this,0,imLeft);
+    //    thread threadRight(&Frame::ExtractORB,this,1,imRight);
+    //    threadLeft.join();
+    //    threadRight.join();
+
+    // NOTE
+    // only build pyramid, while other detection results are directly copied from input parameters
+    thread threadLeft(&ORBextractor::ComputePyramid, this->mpORBextractorLeft, imLeft);
+    thread threadRight(&ORBextractor::ComputePyramid, this->mpORBextractorRight, imRight);
+    threadLeft.join();
+    threadRight.join();
+
+    N = mvKeys.size();
+
+    if (mvKeys.empty())
+        return;
+
+    //    cout << "number of keypoints detected: left = " << mvKeys.size() << "; right = " << mvKeysRight.size() << endl;
+
+#ifdef ALTER_STEREO_MATCHING
+    //
+    UndistortKeyPointsStereo();
+
+#ifndef DELAYED_STEREO_MATCHING
+    ComputeStereoMatches_Undistorted(false);
+#endif
+
+#else
+
+    //    UndistortKeyPoints();
+    mvKeysUn = mvKeys;
+    ComputeStereoMatches();
+
+#endif
+
+    mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
+
+    mvbOutlier = vector<bool>(N, false);
+    mvbCandidate = vector<bool>(N, true);
+    mvbJacobBuilt = vector<bool>(N, false);
+    mvbGoodFeature = vector<bool>(N, false);
+    //
+    mvpMatchScore = vector<int>(N, static_cast<int>(999));
+
+    mvStereoMatched = vector<bool>(N, false);
+
+    // This is done only for the first Frame (or after a change in the calibration)
+    if (mbInitialComputations)
+    {
+#ifdef ALTER_STEREO_MATCHING
+        ComputeImageBoundsStereo(imLeft);
+#else
+        ComputeImageBounds(imLeft);
+#endif
+
+        mfGridElementWidthInv = static_cast<float>(FRAME_GRID_COLS) / (mnMaxX - mnMinX);
+        mfGridElementHeightInv = static_cast<float>(FRAME_GRID_ROWS) / (mnMaxY - mnMinY);
+
+        fx = K.at<float>(0, 0);
+        fy = K.at<float>(1, 1);
+        cx = K.at<float>(0, 2);
+        cy = K.at<float>(1, 2);
+        invfx = 1.0f / fx;
+        invfy = 1.0f / fy;
+
+        mbInitialComputations = false;
+    }
+    //    cout << "K = " << K << endl;
+
+    mb = mbf / fx;
+    //    cout << "-------- mbf = " << mbf << "; fx = " << fx << "; mb = " << mb << endl;
+
+    AssignFeaturesToGrid();
 }
 
 
@@ -417,6 +517,26 @@ cv::Mat Frame::getTwc() {
     return Twc;
 }
 
+void Frame::ExportToYML(cv::FileStorage &fs)
+{
+
+    if (!fs.isOpened())
+        return;
+
+    write(fs, "nNextId", double(nNextId));
+    write(fs, "mnId", double(mnId));
+    write(fs, "mTimeStamp", mTimeStamp);
+    write(fs, "mK", mK);
+
+    // only export detection results from right frame
+    write(fs, "mvKeys", mvKeys);
+    write(fs, "mDescriptors", mDescriptors);
+    // export detection results from both frames
+    write(fs, "mvKeysRight", mvKeysRight);
+    write(fs, "mDescriptorsRight", mDescriptorsRight);
+    //    write(fs, "mvuRight", mvuRight);
+    //    write(fs, "mvDepth", mvDepth);
+}
 
 bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 {
@@ -1193,11 +1313,11 @@ int Frame::ComputeStereoMatches_Undistorted(bool isOnline)
     }
 
     if (!isOnline) {
-      
-      //
-      if (mvDistIdx.empty())
-	return nmatched;
-      
+
+        //
+        if (mvDistIdx.empty())
+            return nmatched;
+
         sort(mvDistIdx.begin(),mvDistIdx.end());
         const float median = mvDistIdx[mvDistIdx.size()/2].first;
         const float thDist = 1.5f*1.4f*median;
@@ -1239,7 +1359,7 @@ int Frame::ComputeStereoMatches_Undistorted_ByBucketing(bool isOnline)
     std::vector<unsigned int> unmatched;
     Frame::GetUnMatchedKPbyBucketing(this, unmatched);
 
-//    for(int iL=0; iL<N; iL++)
+    //    for(int iL=0; iL<N; iL++)
     for(int iL:unmatched)
     {
 
@@ -1655,4 +1775,4 @@ void Frame::plotStereoMatching(const cv::Mat &imLeft, const cv::Mat &imRight,
     img_l_aux.copyTo(imRes);
 }
 
-} //namespace ORB_SLAM
+} // namespace ORB_SLAM2

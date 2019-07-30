@@ -18,7 +18,6 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #ifndef VIEWER_H
 #define VIEWER_H
 
@@ -60,10 +59,10 @@ private:
 
     bool Stop();
 
-    System* mpSystem;
-    FrameDrawer* mpFrameDrawer;
-    MapDrawer* mpMapDrawer;
-    Tracking* mpTracker;
+    System *mpSystem;
+    FrameDrawer *mpFrameDrawer;
+    MapDrawer *mpMapDrawer;
+    Tracking *mpTracker;
 
     // 1/fps in ms
     double mT;
@@ -83,8 +82,7 @@ private:
 
 };
 
-}
-
+} // namespace ORB_SLAM2
 
 #endif // VIEWER_H
 	

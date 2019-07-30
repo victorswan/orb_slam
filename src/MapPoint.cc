@@ -21,12 +21,12 @@
 #include "MapPoint.h"
 #include "ORBmatcher.h"
 
-#include<mutex>
+#include <mutex>
 
 namespace ORB_SLAM2
 {
 
-long unsigned int MapPoint::nNextId=0;
+long unsigned int MapPoint::nNextId = 0;
 mutex MapPoint::mGlobalMutex;
 
 MapPoint::MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map* pMap):
@@ -53,7 +53,7 @@ MapPoint::MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map* pMap):
 
     // MapPoints can be created from Tracking and Local Mapping. This mutex avoid conflicts with id.
     unique_lock<mutex> lock(mpMap->mMutexPointCreation);
-    mnId=nNextId++;
+    mnId = nNextId++;
 
 // #ifdef ONLINE_TABLE_SELECTION
     mvbActiveHashTables = std::vector<bool>(NUM_TOTAL_HASHTABLES, false);
@@ -73,8 +73,7 @@ MapPoint::MapPoint(const cv::Mat &Pos, Map* pMap, Frame* pFrame, const int &idxF
     Pos.copyTo(mWorldPos);
     cv::Mat Ow = pFrame->GetCameraCenter();
     mNormalVector = mWorldPos - Ow;
-    mNormalVector = mNormalVector/cv::norm(mNormalVector);
-
+    mNormalVector = mNormalVector / cv::norm(mNormalVector);
 
     // temporalObs
     ObsScore = -1.0;
@@ -91,17 +90,17 @@ MapPoint::MapPoint(const cv::Mat &Pos, Map* pMap, Frame* pFrame, const int &idxF
     cv::Mat PC = Pos - Ow;
     const float dist = cv::norm(PC);
     const int level = pFrame->mvKeysUn[idxF].octave;
-    const float levelScaleFactor =  pFrame->mvScaleFactors[level];
+    const float levelScaleFactor = pFrame->mvScaleFactors[level];
     const int nLevels = pFrame->mnScaleLevels;
 
-    mfMaxDistance = dist*levelScaleFactor;
-    mfMinDistance = mfMaxDistance/pFrame->mvScaleFactors[nLevels-1];
+    mfMaxDistance = dist * levelScaleFactor;
+    mfMinDistance = mfMaxDistance / pFrame->mvScaleFactors[nLevels - 1];
 
     pFrame->mDescriptors.row(idxF).copyTo(mDescriptor);
 
     // MapPoints can be created from Tracking and Local Mapping. This mutex avoid conflicts with id.
     unique_lock<mutex> lock(mpMap->mMutexPointCreation);
-    mnId=nNextId++;
+    mnId = nNextId++;
 
 // #ifdef ONLINE_TABLE_SELECTION
     mvbActiveHashTables = std::vector<bool>(NUM_TOTAL_HASHTABLES, false);
@@ -112,14 +111,13 @@ MapPoint::MapPoint(const cv::Mat &Pos, Map* pMap, Frame* pFrame, const int &idxF
 //    mvbQueried = std::vector<bool>(NUM_TOTAL_HASHTABLES, false);
 }
 
-
-MapPoint::MapPoint(cv::FileStorage & fs, Map *pMap):
-    nObs(0), mpReplaced(static_cast<MapPoint*>(NULL))
+MapPoint::MapPoint(cv::FileStorage &fs, Map *pMap) : nObs(0), mpReplaced(static_cast<MapPoint *>(NULL))
 {
 
     double val_tmp;
 
-    fs["mnFirstKFid"] >> val_tmp; mnFirstKFid = (long)val_tmp;
+    fs["mnFirstKFid"] >> val_tmp;
+    mnFirstKFid = (long)val_tmp;
 
     fs["mTrackProjX"] >> mTrackProjX;
     fs["mTrackProjY"] >> mTrackProjY;
@@ -127,16 +125,24 @@ MapPoint::MapPoint(cv::FileStorage & fs, Map *pMap):
     fs["mnTrackScaleLevel"] >> mnTrackScaleLevel;
     fs["mTrackViewCos"] >> mTrackViewCos;
 
-    fs["mnTrackReferenceForFrame"] >> val_tmp; mnTrackReferenceForFrame = (unsigned long)val_tmp;
-    fs["mnLastFrameSeen"] >> val_tmp; mnLastFrameSeen = (unsigned long)val_tmp;
+    fs["mnTrackReferenceForFrame"] >> val_tmp;
+    mnTrackReferenceForFrame = (unsigned long)val_tmp;
+    fs["mnLastFrameSeen"] >> val_tmp;
+    mnLastFrameSeen = (unsigned long)val_tmp;
 
-    fs["mnBALocalForKF"] >> val_tmp; mnBALocalForKF = (unsigned long)val_tmp;
-    fs["mnBAGlobalForKF"] >> val_tmp; mnBAGlobalForKF = (unsigned long)val_tmp;
-    fs["mnFuseCandidateForKF"] >> val_tmp; mnFuseCandidateForKF = (unsigned long)val_tmp;
+    fs["mnBALocalForKF"] >> val_tmp;
+    mnBALocalForKF = (unsigned long)val_tmp;
+    fs["mnBAGlobalForKF"] >> val_tmp;
+    mnBAGlobalForKF = (unsigned long)val_tmp;
+    fs["mnFuseCandidateForKF"] >> val_tmp;
+    mnFuseCandidateForKF = (unsigned long)val_tmp;
 
-    fs["mnLoopPointForKF"] >> val_tmp; mnLoopPointForKF = (unsigned long)val_tmp;
-    fs["mnCorrectedByKF"] >> val_tmp; mnCorrectedByKF = (unsigned long)val_tmp;
-    fs["mnCorrectedReference"] >> val_tmp; mnCorrectedReference = (unsigned long)val_tmp;
+    fs["mnLoopPointForKF"] >> val_tmp;
+    mnLoopPointForKF = (unsigned long)val_tmp;
+    fs["mnCorrectedByKF"] >> val_tmp;
+    mnCorrectedByKF = (unsigned long)val_tmp;
+    fs["mnCorrectedReference"] >> val_tmp;
+    mnCorrectedReference = (unsigned long)val_tmp;
 
     fs["mWorldPos"] >> mWorldPos;
 
@@ -167,9 +173,11 @@ MapPoint::MapPoint(cv::FileStorage & fs, Map *pMap):
 
     // MapPoints can be created from Tracking and Local Mapping. This mutex avoid conflicts with id.
     unique_lock<mutex> lock(mpMap->mMutexPointCreation);
-    fs["mnId"] >> val_tmp; mnId = (unsigned long)val_tmp;
-    fs["nNextId"] >> val_tmp; nNextId = (unsigned long)val_tmp;
-    
+    fs["mnId"] >> val_tmp;
+    mnId = (unsigned long)val_tmp;
+    fs["nNextId"] >> val_tmp;
+    nNextId = (unsigned long)val_tmp;
+
 // #ifdef ONLINE_TABLE_SELECTION
     mvbActiveHashTables = std::vector<bool>(NUM_TOTAL_HASHTABLES, false);
     // mvbActiveHashTables.resize(NUM_TOTAL_HASHTABLES);
@@ -179,10 +187,11 @@ MapPoint::MapPoint(cv::FileStorage & fs, Map *pMap):
 //    mvbQueried = std::vector<bool>(NUM_TOTAL_HASHTABLES, false);
 }
 
-void MapPoint::ExportToYML(cv::FileStorage & fs) {
+void MapPoint::ExportToYML(cv::FileStorage &fs)
+{
 
     if (!fs.isOpened())
-        return ;
+        return;
 
     unique_lock<mutex> lock(mGlobalMutex);
 
@@ -210,8 +219,9 @@ void MapPoint::ExportToYML(cv::FileStorage & fs) {
 
     vector<int> mObservations_first;
     vector<int> mObservations_second;
-    std::map<ORB_SLAM2::KeyFrame*,size_t>::iterator iteo = mObservations.begin();
-    for(; iteo != mObservations.end(); iteo++){
+    std::map<ORB_SLAM2::KeyFrame *, size_t>::iterator iteo = mObservations.begin();
+    for (; iteo != mObservations.end(); iteo++)
+    {
         mObservations_first.push_back(int(iteo->first->mnId));
         mObservations_second.push_back(int(iteo->second));
     }
@@ -586,6 +596,4 @@ int MapPoint::PredictScale(const float &currentDist, Frame* pF)
     return nScale;
 }
 
-
-
-} //namespace ORB_SLAM
+} // namespace ORB_SLAM2

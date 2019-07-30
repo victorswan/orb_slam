@@ -29,8 +29,8 @@
 #define ARMA_NO_DEBUG
 #include "armadillo"
 
-#include<opencv2/core/core.hpp>
-#include<mutex>
+#include <opencv2/core/core.hpp>
+#include <mutex>
 
 namespace ORB_SLAM2
 {
@@ -117,6 +117,7 @@ public:
     long unsigned int mnLastFrameSeen;
 
     // Variables used by local mapping
+    long unsigned int mnBALocalForKFCand;
     long unsigned int mnBALocalForKF;
     long unsigned int mnFuseCandidateForKF;
 

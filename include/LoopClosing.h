@@ -155,6 +155,6 @@ protected:
     double mdPreviousTimeStamp;
 };
 
-} //namespace ORB_SLAM
+} // namespace ORB_SLAM2
 
 #endif // LOOPCLOSING_H

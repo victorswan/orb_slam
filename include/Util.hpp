@@ -23,8 +23,11 @@
 #ifndef UTIL_HPP
 #define UTIL_HPP
 
-#include<vector>
-#include<algorithm>
+#include <vector>
+#include <algorithm>
+
+#include <Eigen/Core>
+//#include <unsupported/Eigen/Splines>
 
 #define ARMA_NO_DEBUG
 #include "armadillo"
@@ -276,30 +279,58 @@ public:
     size_t lmk_num_inlier_good;
 };
 
-
-class MappingLog {
+class MappingLog
+{
 public:
     //
-    void setZero() {
-        frame_time_stamp = 0;
-        //
-        time_proc_new_keyframe = 0;
-        time_culling = 0;
-        time_tri_new_map_point = 0;
-        time_srh_more_neighbor = 0;
-        time_local_BA = 0;
-        //
-        num_fixed_KF = 0;
-        num_free_KF = 0;
-        num_Point = 0;
+    //    void setZero()
+    //    {
+    //        frame_time_stamp = 0;
+    //        //
+    //        time_proc_new_keyframe = 0;
+    //        time_culling = 0;
+    //        time_tri_new_map_point = 0;
+    //        time_srh_more_neighbor = 0;
+    //        time_local_BA = 0;
+    //        //
+    //        num_fixed_KF = 0;
+    //        num_free_KF = 0;
+    //        num_Point = 0;
+    //    }
+
+    void setGGTimerZero() {
+        time_gg_prediction = 0;
+        time_gg_insert_vertex = 0;
+        time_gg_jacobian = 0;
+        time_gg_preproc = 0;
+        time_gg_rnd_query = 0;
+        time_gg_schur = 0;
+        time_gg_permute = 0;
+        time_gg_cholesky = 0;
+        time_gg_postproc = 0;
+        time_gg_optimization = 0;
+        time_gg_lba_budget = 0;
     }
 
-    void setNaN() {
+    void setNaN()
+    {
         time_proc_new_keyframe = -1;
         time_culling = -1;
         time_tri_new_map_point = -1;
         time_srh_more_neighbor = -1;
         time_local_BA = -1;
+        //
+        time_gg_prediction = -1;
+        time_gg_preproc = -1;
+        time_gg_insert_vertex = -1;
+        time_gg_jacobian = -1;
+        time_gg_rnd_query = -1;
+        time_gg_schur = -1;
+        time_gg_permute = -1;
+        time_gg_cholesky = -1;
+        time_gg_postproc = -1;
+        time_gg_optimization = -1;
+        time_gg_lba_budget = -1;
         //
         num_fixed_KF = 0;
         num_free_KF = 0;
@@ -313,6 +344,20 @@ public:
     double time_tri_new_map_point;
     double time_srh_more_neighbor;
     double time_local_BA;
+
+    // time cost break down for good graph
+    double time_gg_prediction;
+    double time_gg_insert_vertex;
+    double time_gg_jacobian;
+    double time_gg_preproc;
+    double time_gg_rnd_query;
+    double time_gg_schur;
+    double time_gg_permute;
+    double time_gg_cholesky;
+    double time_gg_postproc;
+    double time_gg_optimization;
+    // budget assigned via anticipation
+    double time_gg_lba_budget;
 
     size_t num_fixed_KF;
     size_t num_free_KF;
@@ -338,13 +383,66 @@ public:
 // Lmk life log
 class LmkLog {
 public:
-  LmkLog(const int &id_, const int &life_) {
-    id = id_;
-    life = life_;
-  }
+    LmkLog(const int &id_, const int &life_)
+    {
+        id = id_;
+        life = life_;
+    }
 
-  int id;
-  int life;
+    int id;
+    int life;
+};
+
+// Structure for keypoint I/O
+class KeyPointLog
+{
+public:
+    bool ReadFromYAML(std::string kpt_path)
+    {
+
+        cv::FileStorage fs(kpt_path.c_str(), cv::FileStorage::READ);
+        if (!fs.isOpened())
+        {
+            std::cout << "func ReadFromYAML: keypoint file not found!" << std::endl;
+            mTimeStamp = -1;
+            mvKeysLeft.clear();
+            mvKeysRight.clear();
+            return false;
+        }
+
+        //    double val_tmp;
+        //    fs["nNextId"] >> val_tmp; nNextId = (unsigned long)val_tmp;
+        //    fs["mnId"] >> val_tmp; mnId = (unsigned long)val_tmp;
+
+        fs["mTimeStamp"] >> mTimeStamp;
+        //    fs["mK"] >> mK;
+
+        cv::FileNode mvKeysFileNode = fs["mvKeys"]; //>> no operator overloading for KeyPoint
+        read(mvKeysFileNode, mvKeysLeft);
+        //    cv::FileNode mvKeysUnFileNode = fs["mvKeysUn"];
+        //    read(mvKeysUnFileNode, mvKeysUn);
+        //    assert(mvKeysUn.size() == mvKeys.size());
+        fs["mDescriptors"] >> mDiscLeft;
+        assert(mvKeysLeft.size() == mDiscLeft.rows);
+
+        mvKeysFileNode = fs["mvKeysRight"];
+        read(mvKeysFileNode, mvKeysRight);
+        fs["mDescriptorsRight"] >> mDiscRight;
+        assert(mvKeysRight.size() == mDiscRight.rows);
+
+        //    fs["mvuRight"] >> mvuRight;
+        //    assert(mvuRight.size() == mvKeys.size());
+        //    fs["mvDepth"] >> mvDepth;
+        //    assert(mvDepth.size() == mvKeys.size());
+        return true;
+    }
+
+    //
+    double mTimeStamp;
+    std::vector<cv::KeyPoint> mvKeysLeft;
+    std::vector<cv::KeyPoint> mvKeysRight;
+    cv::Mat mDiscLeft;
+    cv::Mat mDiscRight;
 };
 
 //
@@ -1101,15 +1199,25 @@ inline void compute_Huber_weight (const float residual_, float & weight_) {
 
 
 
-class OdomLog {
+class OdometryLog {
 public:
   
-  OdomLog(double time_stamp_, double tx_, double ty_, double tz_, 
+  OdometryLog(double time_stamp_, double tx_, double ty_, double tz_,
 	  double qw_, double qx_, double qy_, double qz_) : 
-	  time_stamp(time_stamp_), tx(tx_), ty(ty_), tz(tz_), qw(qw_), qx(qx_), qy(qy_), qz(qz_) {}
+      time_stamp(time_stamp_), tx(tx_), ty(ty_), tz(tz_), qw(qw_), qx(qx_), qy(qy_), qz(qz_)
+  {
+      // convert vec to matrix
+      matrixCast(Twc);
+      // grab the inverse matrix
+      cv::Mat Rcw = Twc.rowRange(0, 3).colRange(0, 3).t();
+      cv::Mat tcw = -Rcw * Twc.rowRange(0, 3).col(3);
+      Tcw = cv::Mat::eye(4, 4, CV_32F);
+      Rcw.copyTo(Tcw.rowRange(0, 3).colRange(0, 3));
+      tcw.copyTo(Tcw.rowRange(0, 3).col(3));
+  }
   
-  void matrixCast(cv::Mat & T) {
-    
+  void matrixCast(cv::Mat & T)
+  {
     T = cv::Mat::eye(4,4,CV_32F);
     cv::Mat Rmat = cv::Mat::eye(3,3,CV_32F);
     QUAT2DCM_float(qw, qx, qy, qz, Rmat);
@@ -1125,19 +1233,124 @@ public:
   double tx, ty, tz;
   double qw, qx, qy, qz;
   
+  cv::Mat Tcw;
+  cv::Mat Twc;
+
 };
 
 struct OdomLogComparator {
-    bool operator()(double const& t0, OdomLog const& m1) const {
+    bool operator()(double const& t0, OdometryLog const& m1) const {
         return t0 < m1.time_stamp;
     }
     
-    bool operator()(OdomLog const& m0, double const& t1) const {
+    bool operator()(OdometryLog const& m0, double const& t1) const {
         return m0.time_stamp < t1;
     }
 };
 
 
+
+//=============================================================================
+// _root3, root3 from http://prografix.narod.ru
+//=============================================================================
+inline double _root3 ( double x )
+{
+    double s = 1.;
+    while ( x < 1. )
+    {
+        x *= 8.;
+        s *= 0.5;
+    }
+    while ( x > 8. )
+    {
+        x *= 0.125;
+        s *= 2.;
+    }
+    double r = 1.5;
+    r -= 1./3. * ( r - x / ( r * r ) );
+    r -= 1./3. * ( r - x / ( r * r ) );
+    r -= 1./3. * ( r - x / ( r * r ) );
+    r -= 1./3. * ( r - x / ( r * r ) );
+    r -= 1./3. * ( r - x / ( r * r ) );
+    r -= 1./3. * ( r - x / ( r * r ) );
+    return r * s;
 }
+
+inline double root3 ( double x )
+{
+    if ( x > 0 ) return _root3 ( x ); else
+        if ( x < 0 ) return -_root3 (- x ); else
+            return 0.;
+}
+
+// x - array of size 2
+// return 2: 2 real roots x[0], x[1]
+// return 0: pair of complex roots: x[0]±i*x[1]
+inline int SolveQuadraticEquation(double & a, double & b,
+                                  std::vector<double> & x)
+{	// solve equation x^2 + a*x + b = 0
+    x.clear();
+    double D = 0.25*a*a - b;
+    if (D >= 0) {
+        D = sqrt(D);
+        x.push_back( -0.5*a + D );
+        x.push_back( -0.5*a - D );
+        return 2;
+    }
+    x.push_back( -0.5*a );
+    x.push_back( sqrt(-D) );
+    return 0;
+}
+
+//---------------------------------------------------------------------------
+// x - array of size 3
+// In case 3 real roots: => x[0], x[1], x[2], return 3
+//         2 real roots: x[0], x[1],          return 2
+//         1 real root : x[0], x[1] ± i*x[2], return 1
+inline int SolveCubicEquation(double & a, double & b, double & c,
+                              std::vector<double> & x)
+{
+    // solve cubic equation x^3 + a*x^2 + b*x + c = 0
+    x.clear();
+    double a2 = a*a;
+    double q  = (a2 - 3*b)/9;
+    double r  = (a*(2*a2-9*b) + 27*c)/54;
+    // equation x^3 + q*x + r = 0
+    double r2 = r*r;
+    double q3 = q*q*q;
+    double A, B;
+    if (r2 <= (q3 + DBL_MIN)) {//<<-- FIXED!
+        double t=r/sqrt(q3);
+        if( t<-1)
+            t=-1;
+        if( t> 1)
+            t= 1;
+        t=acos(t);
+        a/=3;
+        q=-2*sqrt(q);
+        x.push_back(q*cos(t/3)-a);
+        x.push_back(q*cos((t+6.28318530717958648)/3)-a);
+        x.push_back(q*cos((t-6.28318530717958648)/3)-a);
+        return(3);
+    } else {
+        //A =-pow(fabs(r)+sqrt(r2-q3),1./3);
+        A =-root3(fabs(r)+sqrt(r2-q3));
+        if( r<0 )
+            A=-A;
+        B = (A==0? 0 : B=q/A);
+        a/=3;
+        x.push_back((A+B)-a);
+        x.push_back(-0.5*(A+B)-a);
+        x.push_back(0.5*sqrt(3.)*(A-B));
+        if(fabs(x[2])<DBL_MIN) {
+            x[2]=x[1];
+            return(2);
+        }
+        return(1);
+    }
+}// SolveP3(double *x,double a,double b,double c) {
+
+
+} // namespace ORB_SLAM2
 
 #endif

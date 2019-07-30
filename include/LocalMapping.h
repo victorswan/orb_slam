@@ -34,7 +34,7 @@
 
 //#define LOGGING_KF_LIST
 
-//#define LOCAL_BA_TIME_LOGGING
+#define LOCAL_BA_TIME_LOGGING
 
 
 namespace ORB_SLAM2
@@ -43,6 +43,17 @@ namespace ORB_SLAM2
 class Tracking;
 class LoopClosing;
 class Map;
+
+struct BudgetPredictParam {
+    double budget_per_frame;
+    double coe_a, coe_b, coe_c, coe_d;
+    //
+    std::vector<double> match_ratio_log;
+    size_t              match_ratio_idx;
+    //
+    double              avg_match_num;
+    //    double              visible_mpt_num;
+};
 
 class LocalMapping
 {
@@ -89,15 +100,28 @@ public:
 
     void UpdateHashTables(std::vector<MapPoint*>& vpMPs);
 
+#ifdef LOGGING_KF_LIST
     void SetRealTimeFileStream(string fNameRealTimeBA);
+#endif
 
     // Time log
-    vector<MappingLog> mBATimeLog;
+    std::vector<MappingLog> mvBATimeLog;
     MappingLog logCurrentKeyFrame;
 
+#ifdef ENABLE_ANTICIPATION_IN_BUDGET
+    // Historical data for online budget estimation
+    //    std::queue<std::pair<double, double>> mqBudgetHistory;
+    //    Eigen::Matrix<double, NUM_HISTORICAL_BUDGET, 4> mKFNumMat;
+    //    Eigen::Matrix<double, NUM_HISTORICAL_BUDGET, 1> mBudgetMat;
+    size_t mRunningRow;
+    bool   mbFullyLoaded;
+#endif
+    //
+    BudgetPredictParam mParam;
+
 protected:
-//    void UpdateHashTables(std::vector<MapPoint*>& vpMPs);
-//    void UpdateHashTables(std::list<MapPoint*>& vpMPs);
+    //    void UpdateHashTables(std::vector<MapPoint*>& vpMPs);
+    //    void UpdateHashTables(std::list<MapPoint*>& vpMPs);
 
     bool CheckNewKeyFrames();
     void ProcessNewKeyFrame();
@@ -129,6 +153,8 @@ protected:
     vector<size_t> mvFixedFrameList;
 #endif
 
+    arma::wall_clock timer;
+
     std::ofstream f_realTimeBA;
 
     Map* mpMap;
@@ -158,6 +184,6 @@ protected:
     std::mutex mMutexUpdateHashTables;
 };
 
-} //namespace ORB_SLAM
+} // namespace ORB_SLAM2
 
 #endif // LOCALMAPPING_H

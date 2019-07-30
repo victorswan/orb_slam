@@ -25,6 +25,10 @@
 #include "ORBmatcher.h"
 #include "Optimizer.h"
 
+#ifdef ENABLE_ANTICIPATION_IN_BUDGET
+#include <Eigen/LU>
+#endif
+
 #include <mutex>
 
 namespace ORB_SLAM2
@@ -34,7 +38,52 @@ LocalMapping::LocalMapping(Map *pMap, const float bMonocular):
     mbMonocular(bMonocular), mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
     mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true)
 {
-    mBATimeLog.clear();
+#ifdef ENABLE_ANTICIPATION_IN_BUDGET
+    //    mKFNumMat.Zero();
+    //    mBudgetMat.Zero();
+    mRunningRow = 0;
+    mbFullyLoaded = false;
+    //
+    // prior coeffients for EuRoC sequences
+    mParam.coe_a = -4.626365363955979e-04; // -2.762403356776874e-04;
+    mParam.coe_b = 0.122198203669508; // 0.109476983548765;
+    mParam.coe_c = -0.203900111858952; // -0.162915402955300;
+    mParam.coe_d = 75.720220172857170; // 71.289612325498380;
+
+    //
+    // prior coeffients for EuRoC sequences on Jetson TX2
+    // mParam.coe_a = 0.00178178408800715;
+    // mParam.coe_b = -0.151759389787934;
+    // mParam.coe_c = 23.5952776017384;
+    // mParam.coe_d = 14.8044507431834;
+
+    //
+    // prior coeffients for FPV sequences
+    //    mParam.coe_a = -0.000615979109315896; // -0.000580387577168096;
+    //    mParam.coe_b = 0.105468647768499; // 0.103858878586380;
+    //    mParam.coe_c = 0.351263613720075; // 0.488606421597128;
+    //    mParam.coe_d = 40.6725054076365; // 38.1498525945427;
+
+
+    //
+    // prior coeffients for Gazebo closed-loop navigation (on PC)
+    // mParam.coe_a = -5.989414432992870e-04;
+    // mParam.coe_b = 0.031058229077929;
+    // mParam.coe_c = 8.965307762782414;
+    // mParam.coe_d = 37.807563677029975;
+
+    //
+    // prior coeffients for Gazebo closed-loop navigation (on low-power)
+    //TODO
+    //TODO
+    //TODO
+
+    //
+    mParam.match_ratio_log.clear();
+    mParam.match_ratio_idx = 0;
+#endif
+    //
+    mvBATimeLog.clear();
 }
 
 void LocalMapping::SetLoopCloser(LoopClosing* pLoopCloser)
@@ -49,16 +98,24 @@ void LocalMapping::SetHashHandler(HASHING::MultiIndexHashing *pHashHandler)
 
 void LocalMapping::SetTracker(Tracking *pTracker)
 {
-    mpTracker=pTracker;
+    mpTracker = pTracker;
+
+#ifdef ENABLE_ANTICIPATION_IN_BUDGET
+    // set budget in seconds
+    // mParam.budget_per_frame = mpTracker->time_track_budget;
+    mParam.budget_per_frame = 1.0f / mpTracker->camera_fps;
+    mParam.avg_match_num    = double(mpTracker->num_good_constr_predef) / 2.0;
+#endif
 }
 
+#ifdef LOGGING_KF_LIST
 void LocalMapping::SetRealTimeFileStream(string fNameRealTimeBA)
 {
     f_realTimeBA.open(fNameRealTimeBA.c_str());
     f_realTimeBA << fixed;
     f_realTimeBA << "#TimeStamp NumKF [IDs] NumFixF [IDs]" << std::endl;
 }
-
+#endif
 
 void LocalMapping::Run()
 {
@@ -79,49 +136,29 @@ void LocalMapping::Run()
 #ifdef LOCAL_BA_TIME_LOGGING
             logCurrentKeyFrame.setNaN();
             logCurrentKeyFrame.frame_time_stamp = mlNewKeyFrames.front()->mTimeStamp;
-            //
-            timer.tic();
 #endif
             // BoW conversion and insertion in Map
             ProcessNewKeyFrame();
 
-#ifdef LOCAL_BA_TIME_LOGGING
-            logCurrentKeyFrame.time_proc_new_keyframe = timer.toc();
-            timer.tic();
-#endif
-
             // Check recent MapPoints
             MapPointCulling();
-
-#ifdef LOCAL_BA_TIME_LOGGING
-            logCurrentKeyFrame.time_culling = timer.toc();
-            timer.tic();
-#endif
 
             // Triangulate new MapPoints
             CreateNewMapPoints();
 
-#ifdef LOCAL_BA_TIME_LOGGING
-            logCurrentKeyFrame.time_tri_new_map_point = timer.toc();
-            timer.tic();
-#endif
-
-            if(!CheckNewKeyFrames())
+            if (!CheckNewKeyFrames())
             {
                 // Find more matches in neighbor keyframes and fuse point duplications
                 SearchInNeighbors();
             }
 
-#ifdef LOCAL_BA_TIME_LOGGING
-            logCurrentKeyFrame.time_srh_more_neighbor = timer.toc();
-#endif
-
             mbAbortBA = false;
 
-            if(!CheckNewKeyFrames() && !stopRequested())
+            if (!CheckNewKeyFrames() && !stopRequested())
             {
-                // Local BA
-                if(mpMap->KeyFramesInMap()>2) {
+
+                if (mpMap->KeyFramesInMap() > 2)
+                {
 #ifdef LOCAL_BA_TIME_LOGGING
                     // logCurrentKeyFrame.time_srh_more_neighbor = timer.toc();
                     timer.tic();
@@ -129,47 +166,61 @@ void LocalMapping::Run()
 
 #ifdef LOGGING_KF_LIST
                     // Local BA & export the logged kf list
-                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpMap, mvKeyFrameList, mvFixedFrameList);
+                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
+                                                     mvKeyFrameList, mvFixedFrameList,
+                                                     logCurrentKeyFrame.num_Point);
+                    //
+                    logCurrentKeyFrame.num_fixed_KF = mvFixedFrameList.size();
+                    logCurrentKeyFrame.num_free_KF = mvKeyFrameList.size();
                     //
                     f_realTimeBA << setprecision(6) << mpCurrentKeyFrame->mTimeStamp << endl;
                     f_realTimeBA << setprecision(7) << mvKeyFrameList.size();
-                    for (int i=0; i<mvKeyFrameList.size(); ++i)
+                    for (int i = 0; i < mvKeyFrameList.size(); ++i)
                         f_realTimeBA << " " << mvKeyFrameList[i];
                     f_realTimeBA << endl;
                     //
                     f_realTimeBA << mvFixedFrameList.size();
-                    for (int i=0; i<mvFixedFrameList.size(); ++i)
+                    for (int i = 0; i < mvFixedFrameList.size(); ++i)
                         f_realTimeBA << " " << mvFixedFrameList[i];
                     f_realTimeBA << endl;
 #else
                     // Local BA
+#ifdef ENABLE_ANTICIPATION_IN_BUDGET
                     Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
-                                                     logCurrentKeyFrame.num_fixed_KF, logCurrentKeyFrame.num_free_KF,
-                                                     logCurrentKeyFrame.num_Point);
+                                                     logCurrentKeyFrame.num_fixed_KF, logCurrentKeyFrame.num_free_KF, logCurrentKeyFrame.num_Point,
+                                                     logCurrentKeyFrame, &mParam);
+#else
+                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
+                                                     logCurrentKeyFrame.num_fixed_KF, logCurrentKeyFrame.num_free_KF, logCurrentKeyFrame.num_Point,
+                                                     logCurrentKeyFrame);
+#endif
+
 #endif
 
 #ifdef LOCAL_BA_TIME_LOGGING
                     logCurrentKeyFrame.time_local_BA = timer.toc();
+                    //#if defined ENABLE_GOOD_GRAPH && defined GOOD_GRAPH_TIME_LOGGING
+                    //                    //
+                    //                    logCurrentKeyFrame.time_gg_insert_vertex    = Optimizer::mTimeInsertVertex;
+                    //                    logCurrentKeyFrame.time_gg_jacobian         = Optimizer::mTimeJacobain;
+                    //                    logCurrentKeyFrame.time_gg_rnd_query        = Optimizer::mTimeQuery;
+                    //                    logCurrentKeyFrame.time_gg_schur            = Optimizer::mTimeSchur;
+                    //                    logCurrentKeyFrame.time_gg_permute          = Optimizer::mTimePerm;
+                    //                    logCurrentKeyFrame.time_gg_cholesky         = Optimizer::mTimeCholesky;
+                    //                    logCurrentKeyFrame.time_gg_postproc         = Optimizer::mTimePost;
+                    //                    logCurrentKeyFrame.time_gg_optimization     = Optimizer::mTimeOptim;
+                    //#endif
 #endif
                 }
 
-
-#ifdef LOCAL_BA_TIME_LOGGING
-            timer.tic();
-#endif
- 
                 // Check redundant local Keyframes
                 KeyFrameCulling();
-
-#ifdef LOCAL_BA_TIME_LOGGING
-            logCurrentKeyFrame.time_culling = timer.toc();
-#endif
             }
 
             mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
 
 #ifdef LOCAL_BA_TIME_LOGGING
-            mBATimeLog.push_back(logCurrentKeyFrame);
+            mvBATimeLog.push_back(logCurrentKeyFrame);
 #endif
 
 #ifdef LOCAL_SEARCH_USING_HASHING
@@ -177,31 +228,16 @@ void LocalMapping::Run()
             mpTracker->RestoreLocalMapPoints(vpBuckUpMapPoints);
             UpdateHashTables(vpBuckUpMapPoints);
 #endif
-        }
 
-/*
-#ifdef LOCAL_SEARCH_USING_HASHING
-        if (NeedUpdateHashTables()){
-            mpTracker->UpdateHashTablesByCoVis();
-            mpTracker->UpdateHashTables(mvpNewAddedMapPoints);
-//
-            SetNeedUpdateHashTables(false);
         }
-#endif
-*/
-        if(!bNeedNewKeyFrames && Stop())
+        else if (Stop())
         {
             // Safe area to stop
-            while(isStopped() && !CheckFinish())
+            while (isStopped() && !CheckFinish())
             {
-/*
-#ifdef LOCAL_SEARCH_USING_HASHING
-                mpTracker->UpdateHashTablesByCoVis();
-#endif
-*/
                 usleep(3000);
             }
-            if(CheckFinish())
+            if (CheckFinish())
                 break;
         }
 
@@ -210,7 +246,7 @@ void LocalMapping::Run()
         // Tracking will see that Local Mapping is busy
         SetAcceptKeyFrames(true);
 
-        if(CheckFinish())
+        if (CheckFinish())
             break;
 
         usleep(3000);
@@ -241,6 +277,10 @@ void LocalMapping::ProcessNewKeyFrame()
         mlNewKeyFrames.pop_front();
     }
 
+#ifdef LOCAL_BA_TIME_LOGGING
+    timer.tic();
+#endif
+
     // Compute Bags of Words structures
     mpCurrentKeyFrame->ComputeBoW();
 
@@ -256,10 +296,10 @@ void LocalMapping::ProcessNewKeyFrame()
             {
                 if(!pMP->IsInKeyFrame(mpCurrentKeyFrame))
                 {
-//                    cout << "pMP.id: " << pMP->mnId << endl;
-//                    cout << "before add obs: " << pMP->GetReferenceKeyFrame() << endl;
+                    //                    cout << "pMP.id: " << pMP->mnId << endl;
+                    //                    cout << "before add obs: " << pMP->GetReferenceKeyFrame() << endl;
                     pMP->AddObservation(mpCurrentKeyFrame, i);
-//                    cout << "after add obs: " << pMP->GetReferenceKeyFrame() << endl;
+                    //                    cout << "after add obs: " << pMP->GetReferenceKeyFrame() << endl;
                     pMP->UpdateNormalAndDepth();
                     pMP->ComputeDistinctiveDescriptors();
                 }
@@ -269,17 +309,25 @@ void LocalMapping::ProcessNewKeyFrame()
                 }
             }
         }
-    }    
+    }
 
     // Update links in the Covisibility Graph
     mpCurrentKeyFrame->UpdateConnections();
 
     // Insert Keyframe in Map
     mpMap->AddKeyFrame(mpCurrentKeyFrame);
+
+#ifdef LOCAL_BA_TIME_LOGGING
+    logCurrentKeyFrame.time_proc_new_keyframe = timer.toc();
+#endif
 }
 
 void LocalMapping::MapPointCulling()
 {
+#ifdef LOCAL_BA_TIME_LOGGING
+    timer.tic();
+#endif
+
     // Check Recent Added MapPoints
     list<MapPoint*>::iterator lit = mlpRecentAddedMapPoints.begin();
     const unsigned long int nCurrentKFid = mpCurrentKeyFrame->mnId;
@@ -313,10 +361,18 @@ void LocalMapping::MapPointCulling()
         else
             lit++;
     }
+
+#ifdef LOCAL_BA_TIME_LOGGING
+    logCurrentKeyFrame.time_culling = timer.toc();
+#endif
 }
 
 void LocalMapping::CreateNewMapPoints()
 {
+#ifdef LOCAL_BA_TIME_LOGGING
+    timer.tic();
+#endif
+
     // Retrieve neighbor keyframes in covisibility graph
     int nn = 10;
     if(mbMonocular)
@@ -567,10 +623,20 @@ void LocalMapping::CreateNewMapPoints()
             nnew++;
         }
     }
+
+#ifdef LOCAL_BA_TIME_LOGGING
+    logCurrentKeyFrame.time_tri_new_map_point = timer.toc();
+#endif
 }
 
+// TODO
+// reduce the overhead of feature matching as part of good graph edge selection
 void LocalMapping::SearchInNeighbors()
 {
+#ifdef LOCAL_BA_TIME_LOGGING
+    timer.tic();
+#endif
+
     // Retrieve neighbor keyframes
     int nn = 10;
     if(mbMonocular)
@@ -649,6 +715,10 @@ void LocalMapping::SearchInNeighbors()
 
     // Update connections in covisibility graph
     mpCurrentKeyFrame->UpdateConnections();
+
+#ifdef LOCAL_BA_TIME_LOGGING
+    logCurrentKeyFrame.time_srh_more_neighbor = timer.toc();
+#endif
 }
 
 cv::Mat LocalMapping::ComputeF12(KeyFrame *&pKF1, KeyFrame *&pKF2)
@@ -684,7 +754,7 @@ bool LocalMapping::Stop()
     if(mbStopRequested && !mbNotStop)
     {
         mbStopped = true;
-        cout << fixed << setprecision(6) << mpTracker->logCurrentFrame.frame_time_stamp << ": Local Mapping STOP" << endl;
+        cout << "Local Mapping STOP" << endl;
         return true;
     }
 
@@ -715,7 +785,7 @@ void LocalMapping::Release()
         delete *lit;
     mlNewKeyFrames.clear();
 
-    cout << fixed << setprecision(6) << mpTracker->logCurrentFrame.frame_time_stamp << ": Local Mapping RELEASE" << endl;
+    cout << "Local Mapping RELEASE" << endl;
 }
 
 bool LocalMapping::AcceptKeyFrames()
@@ -926,4 +996,4 @@ void LocalMapping::UpdateHashTables(std::vector<MapPoint *> &vpMPs)
 //    //    }
 //}
 
-} //namespace ORB_SLAM
+} // namespace ORB_SLAM2

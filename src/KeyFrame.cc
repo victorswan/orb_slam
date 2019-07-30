@@ -21,17 +21,26 @@
 #include "KeyFrame.h"
 #include "Converter.h"
 #include "ORBmatcher.h"
-#include<mutex>
+#include <mutex>
 
 namespace ORB_SLAM2
 {
 
-long unsigned int KeyFrame::nNextId=0;
+long unsigned int KeyFrame::nNextId = 0;
 
-KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
-    mnFrameId(F.mnId),  mTimeStamp(F.mTimeStamp), mnGridCols(FRAME_GRID_COLS), mnGridRows(FRAME_GRID_ROWS),
+#ifdef ENABLE_ANTICIPATION_IN_GRAPH
+KeyFrame::KeyFrame(const double &timeStamp, const cv::Mat &Tcw,
+                   const float &fx_, const float &fy_, const float &cx_, const float &cy_, const float &mb_) :
+    mTimeStamp(timeStamp), fx(fx_), fy(fy_), cx(cx_), cy(cy_), mb(mb_) {
+    // no need to assign mnId = nNextId++;
+    SetPose(Tcw);
+}
+#endif
+
+KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB) : mnFrameId(F.mnId), mTimeStamp(F.mTimeStamp), mnGridCols(FRAME_GRID_COLS), mnGridRows(FRAME_GRID_ROWS),
     mfGridElementWidthInv(F.mfGridElementWidthInv), mfGridElementHeightInv(F.mfGridElementHeightInv),
     mnTrackReferenceForFrame(0), mnFuseTargetForKF(0), mnBALocalForKF(0), mnBAFixedForKF(0),
+    mnBALocalForKFCand(0), mnBAFixedForKFCand(0), mnBALocalCount(0),
     mnLoopQuery(0), mnLoopWords(0), mnRelocQuery(0), mnRelocWords(0), mnBAGlobalForKF(0),
     fx(F.fx), fy(F.fy), cx(F.cx), cy(F.cy), invfx(F.invfx), invfy(F.invfy),
     mbf(F.mbf), mb(F.mb), mThDepth(F.mThDepth), N(F.N), mvKeys(F.mvKeys), mvKeysUn(F.mvKeysUn),
@@ -57,9 +66,13 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     
     //
     mbFixedKF = false;
+
+    mNumVisibleMpt = 0;
 }
 
+
 #ifdef ENABLE_MAP_IO
+//
 KeyFrame::KeyFrame(cv::FileStorage & fs, Map * mMap,
                    ORBVocabulary* mVocabulary, KeyFrameDatabase* mKeyFrameDatabase) {
 
@@ -170,7 +183,12 @@ KeyFrame::KeyFrame(cv::FileStorage & fs, Map * mMap,
     
     //
     mbFixedKF = true;
+
+    mNumVisibleMpt = 0;
+
+    mnBALocalCount = 10;
 }
+//
 #endif
 
 void KeyFrame::ExportToYML(cv::FileStorage & fs) {
@@ -475,6 +493,9 @@ int KeyFrame::GetWeight(KeyFrame *pKF)
         return 0;
 }
 
+cv::Mat KeyFrame::GetOw() {
+    return Ow;
+}
 
 void KeyFrame::AppendMapPoint(MapPoint *pMP)
 {
@@ -564,6 +585,13 @@ MapPoint* KeyFrame::GetMapPoint(const size_t &idx)
     unique_lock<mutex> lock(mMutexFeatures);
     return mvpMapPoints[idx];
 }
+
+
+size_t KeyFrame::GetMatchNum() {
+    unique_lock<mutex> lock(mMutexFeatures);
+    return mvpMapPoints.size();
+}
+
 
 void KeyFrame::UpdateConnections()
 {

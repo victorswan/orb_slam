@@ -96,7 +96,7 @@ int main(int argc, char **argv)
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::RGBD,do_viz);
 
-    SLAM.SetBudgetPerFrame(std::atoi(argv[3]));
+    SLAM.SetConstrPerFrame(std::atoi(argv[3]));
 
 #ifdef REALTIME_TRAJ_LOGGING
     std::string fNameRealTimeTrack = std::string(argv[7]) + "_AllFrameTrajectory.txt";
