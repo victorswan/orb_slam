@@ -40,7 +40,7 @@
 #define DELAYED_STEREO_MATCHING
 
 // For fisheye collected sequences such as TUM VI & MYNT
-#define USE_FISHEYE_DISTORTION
+// #define USE_FISHEYE_DISTORTION
 
 // Reduction of disparity search range for map-matched points
 #define DISPARITY_THRES     50.0

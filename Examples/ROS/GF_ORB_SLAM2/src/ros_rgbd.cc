@@ -35,6 +35,7 @@
 #include "../../../../include/MapPublisher.h"
 
 #include "nav_msgs/Odometry.h"
+#include "nav_msgs/Path.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "tf/transform_datatypes.h"
 #include <tf/transform_broadcaster.h>
@@ -61,6 +62,8 @@ public:
     void GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::ImageConstPtr& msgD);
 
     void GrabOdom(const nav_msgs::Odometry::ConstPtr& msg);
+
+    void GrabPath(const nav_msgs::Path::ConstPtr    & msg);
 
     ORB_SLAM2::System* mpSLAM;
 
@@ -122,7 +125,8 @@ int main(int argc, char **argv)
     sync.registerCallback(boost::bind(&ImageGrabber::GrabRGBD,&igb,_1,_2));
 
 //
-ros::Subscriber sub2 = nh.subscribe("/odom_sparse", 100, &ImageGrabber::GrabOdom, &igb);
+// ros::Subscriber sub2 = nh.subscribe("/odom", 100, &ImageGrabber::GrabOdom, &igb);
+ros::Subscriber sub2 = nh.subscribe("/desired_path", 100, &ImageGrabber::GrabPath, &igb);
 
 
 // TODO
@@ -188,6 +192,44 @@ void ImageGrabber::GrabOdom(const nav_msgs::Odometry::ConstPtr& msg) {
                 msg->pose.pose.orientation.y, 
                 msg->pose.pose.orientation.z
   );
+}
+
+void ImageGrabber::GrabPath(const nav_msgs::Path::ConstPtr& msg) {
+    /*
+    ROS_INFO("Seq: [%d]", msg->header.seq);
+    ROS_INFO("Position-> x: [%f], y: [%f], z: [%f]", msg->pose.pose.position.x,msg->pose.pose.position.y, msg->pose.pose.position.z);
+    ROS_INFO("Orientation-> x: [%f], y: [%f], z: [%f], w: [%f]", msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
+    ROS_INFO("Vel-> Linear: [%f], Angular: [%f]", msg->twist.twist.linear.x,msg->twist.twist.angular.z);
+    */
+
+    //    // densify the path
+    //    // create a cubic spline interpolator
+    //    nav_msgs::Path path_dense;
+    //    // pointsPerUnit, skipPoints, useEndConditions, useMiddleConditions);
+    //    path_smoothing::CubicSplineInterpolator csi(double(100.0),
+    //                                                (unsigned int)0,
+    //                                                true,
+    //                                                true);
+    //    csi.interpolatePath(*msg, path_dense);
+
+    size_t N = msg->poses.size();
+    //    ROS_INFO("Size of path: before [%d] vs. after [%d]", msg->poses.size(), N);
+    for (size_t i=0; i<N; ++i) {
+
+        timeStamp = msg->poses[i].header.stamp.toSec();
+        mpSLAM->mpTracker->BufferingOdom(
+                    timeStamp,
+                    msg->poses[i].pose.position.x,
+                    msg->poses[i].pose.position.y,
+                    msg->poses[i].pose.position.z,
+                    msg->poses[i].pose.orientation.w,
+                    msg->poses[i].pose.orientation.x,
+                    msg->poses[i].pose.orientation.y,
+                    msg->poses[i].pose.orientation.z
+                    );
+    }
+
+    //    mpDensePathPub.publish(path_dense);
 }
 
 void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB, const sensor_msgs::ImageConstPtr& msgD)

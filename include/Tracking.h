@@ -78,7 +78,7 @@ using namespace Eigen;
 // with random error.  It is then utilized as pose prediction (replacement 
 // of constant motion model) in tracking thread.
 //
-// #define PRED_WITH_ODOM
+#define PRED_WITH_ODOM
 
 /* --- options of anticipating poses with closed-loop planner  --- */
 //
@@ -96,7 +96,7 @@ using namespace Eigen;
 #endif
 
 /* --- options of key-frame insert condition --- */
-#define SPARSE_KEYFRAME_COND
+// #define SPARSE_KEYFRAME_COND
 
 
 /* --- options of baseline methods --- */

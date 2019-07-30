@@ -203,7 +203,7 @@ int main(int argc, char **argv)
     sync.registerCallback(boost::bind(&ImageGrabber::GrabStereo, &igb, _1, _2));
     
     //
-    //    ros::Subscriber sub = nh.subscribe("/odom_sparse", 100, &ImageGrabber::GrabOdom, &igb);
+    // ros::Subscriber sub = nh.subscribe("/odom", 100, &ImageGrabber::GrabOdom, &igb);
     ros::Subscriber sub = nh.subscribe("/desired_path", 100, &ImageGrabber::GrabPath, &igb);
     //    igb.mpDensePathPub = nh.advertise<nav_msgs::Path>("/dense_path", 100);
     

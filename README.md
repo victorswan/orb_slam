@@ -17,10 +17,10 @@ As the central part of autonomous navigation stack developed at Georgia Tech IVA
  - this repo is based on ORB-SLAM2, which supports monocular, stereo and rgb-d visual input;
  - GPU accelerated FAST detection (uncomment Macro **CUDA_ACC_FAST** in **ORBextractor.h** to enable it);
  - sped-up lazy stereo matching (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in **Frame.h** to enable it; for fisheye lens, uncomment **USE_FISHEYE_DISTORTION** as well);
+ - budget awared local BA with Good Graph selection (uncomment Macro **ENABLE_GOOD_GRAPH** in **Optimizer.h** & **ENABLE_ANTICIPATION_IN_GRAPH** in **Frame.h** to enable it)
  - map saving & loading modules (uncomment Macro **ENABLE_MAP_IO** in **Frame.h** to enable them)
  - Pose initialization with ChAruco (uncomment Macro **INIT_WITH_ARUCHO** in **Tracking.h** to enable it);
  - catkinize
- - to be included ~~Good Graph BA~~
  - to be included ~~visual inertial fusion~~
 
 ## Build & Run
@@ -59,7 +59,9 @@ Similar to original ORB-SLAM2, the camera parameters shall be provided in yaml f
 
 ## References
 
-If you use GF-ORB-SLAM2 in an academic work, please cite the following papers:
+If you use features in GF-ORB-SLAM2 at an academic work, please cite the following papers accordingly:
+
+Good Feature Matching:
 	
 	@article{zhao2019good,
 	  title={Good Feature Matching: Towards Accurate, Robust VO/VSLAM with Low Latency},
@@ -67,7 +69,17 @@ If you use GF-ORB-SLAM2 in an academic work, please cite the following papers:
 	  journal={submitted to IEEE Transactions on Robotics},
 	  year={2019}
 	}	
-    
+
+  @inproceedings{zhao2018good,
+    title={Good Feature Selection for Least Squares Pose Optimization in VO/VSLAM},
+    author={Zhao, Yipu and Vela, Patricio A},
+    booktitle={IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+    pages={1183--1189},
+    year={2018}
+  }
+
+Map Hashing:
+
      @article{zhao2019low,
       title={Low-latency Visual SLAM with Appearance-Enhanced Local Map Building},
       author={Zhao, Yipu and Ye, Wenkai and Vela, Patricio A},
@@ -75,13 +87,14 @@ If you use GF-ORB-SLAM2 in an academic work, please cite the following papers:
       year={2019}
     }
 
-	@inproceedings{zhao2018good,
-	  title={Good Feature Selection for Least Squares Pose Optimization in VO/VSLAM},
-	  author={Zhao, Yipu and Vela, Patricio A},
-	  booktitle={IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
-	  pages={1183--1189},
-	  year={2018}
-	}
+Good Graph Selection:
+
+  @article{zhao2019graph,
+    title={Good Graph to Optimize: Cost-Effective, Budget-Aware Bundle Adjustment in Visual SLAM},
+    author={Zhao, Yipu and Vela, Patricio A.},
+    journal={submitted to IEEE Robotics and Automation Letters (RAL)},
+    year={2019}
+  } 
 
 ## Contact information
 
