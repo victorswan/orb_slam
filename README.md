@@ -20,7 +20,7 @@ As the central part of autonomous navigation stack developed at Georgia Tech IVA
  - budget awared local BA with Good Graph selection (uncomment Macro **ENABLE_GOOD_GRAPH** in **Optimizer.h** & **ENABLE_ANTICIPATION_IN_GRAPH** in **Frame.h** to enable it; by default the desired path from controller / planner is valid and published to rostopic "/desired_path")
  - map saving & loading modules (uncomment Macro **ENABLE_MAP_IO** in **Frame.h** to enable them)
  - Pose initialization with ChAruco (uncomment Macro **INIT_WITH_ARUCHO** in **Tracking.h** to enable it);
- - catkinize
+ - catkinize (default; for non-ros usage, check out the master branch)
  - to be included ~~visual inertial fusion~~
 
 ## Build & Run
