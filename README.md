@@ -91,7 +91,7 @@ If you use features in GF-ORB-SLAM2 at an academic work, please cite the followi
 
 	@article{zhao2019graph,
 	  title={Good Graph to Optimize: Cost-Effective, Budget-Aware Bundle Adjustment in Visual SLAM},
-	  author={Zhao, Yipu and Vela, Patricio A.},
+	  author={Zhao, Yipu and Smith, Justin S. and Vela, Patricio A.},
 	  journal={submitted to IEEE Transactions on Robotics},
 	  year={2019}
 	} 
