@@ -21,8 +21,8 @@
 #ifndef TRACKING_H
 #define TRACKING_H
 
-#include<opencv2/core/core.hpp>
-#include<opencv2/features2d/features2d.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/features2d/features2d.hpp>
 
 #include "Viewer.h"
 #include "FrameDrawer.h"
@@ -49,24 +49,31 @@ using namespace Eigen;
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
+// #include <opencv2/xphoto.hpp>
+
 #include <mutex>
 
-
-//#define SIMU_MOTION_BLUR
+/* --- options of debugging and logging --- */
 //#define TIMECOST_VERBOSE
 //#define LMKNUM_VERBOSE
+#define REALTIME_TRAJ_LOGGING
 
+/* --- options for ground truth generation, by running at a slow rate and additional optimization iterations --- */
+//#define GROUND_TRUTH_GEN_MODE
+
+/* --- options for outdoor challenging sequences such as RobotCar and XWing --- */
+// #define ENABLE_WHITE_BALANCE
+// #define ENABLE_LARGE_SEARCH_WINDOW
 
 /* --- options of baseline methods --- */
-//#define ORB_SLAM_BASELINE
-//#define DISABLE_RELOC
-
-/* --- options of non-necessary viz codes --- */
-// when running on long-term large-scale dataset, this will save us a lot of time!
-#define DISABLE_MAP_VIZ
+// #define ORB_SLAM_BASELINE
+// #define DISABLE_RELOC
 
 /* --- options of key-frame insert condition --- */
-//#define SPARSE_KEYFRAME_COND
+// #define SPARSE_KEYFRAME_COND
+
+/* --- options of enabling anticipation in motion-based tracking --- */
+#define PRED_WITH_ODOM
 
 /* --- options to priortize feature matching wrt local map --- */
 #ifndef ORB_SLAM_BASELINE
@@ -79,7 +86,6 @@ using namespace Eigen;
 
     // #define RANDOM_FEATURE_MAP_MATCHING
     // #define LONGLIVE_FEATURE_MAP_MATCHING
-
     #define GOOD_FEATURE_MAP_MATCHING
     // include frame-by-frame matchings as prior term in good matching
     // #define FRAME_MATCHING_INFO_PRIOR
@@ -92,7 +98,7 @@ using namespace Eigen;
     //#define USE_OBSERVABILITY_MATRIX
 
     // limit the budget of computing matrices of existing matches at current frame to 2ms
-    #define MATRIX_BUDGET_REALTIME  0.002 // 0.1 // 
+    #define MATRIX_BUDGET_REALTIME  0.002
     // limit the budget of predicting matrices at next frame to 2ms
     #define MATRIX_BUDGET_PREDICT   0.002
 
@@ -105,39 +111,20 @@ using namespace Eigen;
 // time to init tracking with full feature set
 #define TIME_INIT_TRACKING      5 // 10 //
 
-#define THRES_INIT_MPT_NUM          100 // 50
-#define SRH_WINDOW_SIZE_INIT        100
+#define THRES_INIT_MPT_NUM      100 // 50
+#define SRH_WINDOW_SIZE_INIT    100
 
-#define MAX_FRAME_LOSS_DURATION     5
+#define MAX_FRAME_LOSS_DURATION 999 // 20 // 5
+
+/* --- options of non-necessary viz codes --- */
+// when running on long-term large-scale dataset, this will save us a lot of time!
+#define DISABLE_MAP_VIZ
 
 /* --- options of feature subset selection methods --- */
-//#define RANDOM_FAIR_COMPARISON
-//#define BUCKETING_FAIR_COMPARISON
-#define BUCKET_WIDTH                50
-#define BUCKET_HEIGHT               50
-//#define LONGEST_TRACK_FAIR_COMPARISON
-//#define QUALITY_FAIR_COMPARISON
-//#define GOOD_FEATURE_FAIR_COMPARISON
-//#define RANDOM_ENHANCEMENT
-//#define QUALITY_ENHANCEMENT
+#define BUCKET_WIDTH            50
+#define BUCKET_HEIGHT           50
 
 //#define WITH_IMU_PREINTEGRATION
-//#define MIN_NUM_MATCHES           30 // 50
-//#define MIN_NUM_GOOD_FEATURES     40 // For KITTI
-//#define MIN_NUM_GOOD_FEATURES     30 // For TUM
-//#define MIN_NUM_GOOD_FEATURES       20 // 30 // 50 // 80 // (with 80 the performance of GF is closed to ALL) // 100 // For EuRoC
-// 40 is used when insert GF at trackMotionModel
-
-/* --- options to good feature selection; discarded since good feature 2.0 --- */
-//#define ENABLE_EXPLICIT_OUTLIER_REJ
-//#define RANSAC_POOL_FOR_SUBSET
-//#define RANSAC_ITER_NUMBER      150 // 100 // 50 //
-
-/* --- options of candidate pooling methods; discarded since good feature 2.0 --- */
-//#define QUALITY_POOL_FOR_SUBSET
-//#define QUALITY_POOL_SCALE         2 // 1.25 // 2.5 // 1.0 // 1.5 // 1.75 //
-//#define QUALITY_POOL_PERCENTILE     0.75 // 0.5 // 0.3 // 0.85 //
-//#define QUALITY_POOL_MAXSIZE        250
 
 namespace ORB_SLAM2
 {
@@ -150,27 +137,27 @@ class LoopClosing;
 class System;
 
 class Tracking
-{  
+{
 
 public:
-    Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Map* pMap,
-             KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor);
+    Tracking(System *pSys, ORBVocabulary *pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap,
+             KeyFrameDatabase *pKFDB, const string &strSettingPath, const int sensor);
 
     // for test only
-    Tracking(const cv::Mat K, const cv::Mat DistCoef) {
+    Tracking(const cv::Mat K, const cv::Mat DistCoef)
+    {
         K.copyTo(mK);
         DistCoef.copyTo(mDistCoef);
     }
 
-
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
-    cv::Mat GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp);
-    cv::Mat GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp);
+    cv::Mat GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRectRight, const double &timestamp);
+    cv::Mat GrabImageRGBD(const cv::Mat &imRGB, const cv::Mat &imD, const double &timestamp);
     cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
 
-    void SetLocalMapper(LocalMapping* pLocalMapper);
-    void SetLoopClosing(LoopClosing* pLoopClosing);
-    void SetViewer(Viewer* pViewer);
+    void SetLocalMapper(LocalMapping *pLocalMapper);
+    void SetLoopClosing(LoopClosing *pLoopClosing);
+    void SetViewer(Viewer *pViewer);
 
     // Load new settings
     // The focal lenght should be similar or scale prediction will fail when projecting points
@@ -180,7 +167,6 @@ public:
     // Use this function if you have deactivated local mapping and you only want to localize the camera.
     void InformOnlyTracking(const bool &flag);
 
-
     ~Tracking();
 
     // init file stream for writing real time tracking result
@@ -188,15 +174,44 @@ public:
 
     void updateORBExtractor();
 
-public:
+#ifdef ENABLE_DETECTION_IO
+    //
+    void SaveKeyPoints(const std::string &kpt_path);
+    //    void LoadKeyPoints(const std::string &kpt_path);
 
+    double mTimeStamp_loaded;
+    //
+    std::vector<cv::KeyPoint> mvKeysLeft;
+    std::vector<cv::KeyPoint> mvKeysRight;
+    cv::Mat mDiscLeft;
+    cv::Mat mDiscRight;
+#endif
+
+    void ForceReloc()
+    {
+
+        cout << "start force reloc" << endl;
+
+        mState = LOST;
+        //        mvpLocalMapPoints = mpMap->GetAllMapPoints();
+        //        if (mvpLocalKeyFrames.size() > 0)
+        //            mpReferenceKF = mvpLocalKeyFrames[mvpLocalKeyFrames.size()-1];
+        //        else
+        //            mvpLocalKeyFrames = NULL;
+        //        mCurrentFrame.mpReferenceKF = pKFcur;
+
+        cout << "done with force reloc" << endl;
+    }
+
+public:
     // Tracking states
-    enum eTrackingState{
-        SYSTEM_NOT_READY=-1,
-        NO_IMAGES_YET=0,
-        NOT_INITIALIZED=1,
-        OK=2,
-        LOST=3
+    enum eTrackingState
+    {
+        SYSTEM_NOT_READY = -1,
+        NO_IMAGES_YET = 0,
+        NOT_INITIALIZED = 1,
+        OK = 2,
+        LOST = 3
     };
 
     eTrackingState mState;
@@ -213,12 +228,13 @@ public:
     int mnInitStereo;
 
     // Observability computation
-    Observability * mObsHandler;
+    Observability *mObsHandler;
 
     size_t num_good_constr_predef;
     //    double ratio_good_inlier_predef;
     //    size_t num_good_feature_found;
 
+    double time_track_budget;
 
     //    int mToMatchMeasurement;
     //    int mMatchedLocalMapPoint;
@@ -228,18 +244,22 @@ public:
     double time_frame_init;
     double camera_fps;
 
+#ifdef ENABLE_ANTICIPATION_IN_GRAPH
+    double mVFrameInteval;
+#endif
+
     //    vector<LmkSelectionInfo> obs_thres_arr;
     //    vector<FramePose> mFramePoseSeq;
     //    vector<std::pair<double, int> > mFrameInlierSeq;
 
     // Time log
-    vector<TimeLog> mFrameTimeLog;
-    TimeLog logCurrentFrame;
+    std::vector<TrackingLog> mFrameTimeLog;
+    TrackingLog logCurrentFrame;
 
     //
-    void BucketingMatches(const Frame *pFrame, vector<GoodPoint> & mpBucketed);
-    void LongLivedMatches(const Frame *pFrame, vector<GoodPoint> & mpLongLived);
-    void RanSACMatches(const Frame *pFrame, vector<GoodPoint> & mpRanSAC);
+    void BucketingMatches(const Frame *pFrame, vector<GoodPoint> &mpBucketed);
+    void LongLivedMatches(const Frame *pFrame, vector<GoodPoint> &mpLongLived);
+    void RanSACMatches(const Frame *pFrame, vector<GoodPoint> &mpRanSAC);
 
     // Initialization Variables (Monocular)
     std::vector<int> mvIniLastMatches;
@@ -250,18 +270,45 @@ public:
 
     // Lists used to recover the full camera trajectory at the end of the execution.
     // Basically we store the reference keyframe for each frame and its relative transformation
-    list<cv::Mat> mlRelativeFramePoses;
-    list<KeyFrame*> mlpReferences;
-    list<double> mlFrameTimes;
-    list<bool> mlbLost;
+    std::list<cv::Mat> mlRelativeFramePoses;
+    std::list<KeyFrame *> mlpReferences;
+    std::list<double> mlFrameTimes;
+    std::list<bool> mlbLost;
 
     // True if local mapping is deactivated and we are performing only localization
     bool mbOnlyTracking;
 
     void Reset();
 
-protected:
+    //
+    void SetReferenceKeyFrame(KeyFrame *pKF)
+    {
+        mpReferenceKF = pKF;
+    }
+    void SetLastKeyFrame(KeyFrame *pKF)
+    {
+        mpLastKeyFrame = pKF;
+    }
+    void SetLastKeyFrameId(unsigned long id)
+    {
+        mnLastKeyFrameId = id;
+    }
 
+    //
+    void ResetOdomPlanned()
+    {
+        mvOdomPlanned.clear();
+        mOdomLBAIdx = 0;
+        mOdomTrackIdx = 0;
+    }
+
+    void AddOdomPlanned(const double & odom_stamp, const cv::Mat & odom_Tcw)
+    {
+        assert(odom_Twc.rols == 4 && odom_Twc.cols == 4);
+        mvOdomPlanned.push_back({odom_stamp, odom_Tcw});
+    }
+
+protected:
     // Main tracking function. It is independent of the input sensor.
     void Track();
 
@@ -277,6 +324,9 @@ protected:
     void UpdateLastFrame();
     bool TrackWithMotionModel();
 
+    bool PredictRelMotion(const double & time_prev, const double & time_curr,
+                          cv::Mat & T_rel);
+
     bool Relocalization();
 
     void UpdateLocalMap();
@@ -286,7 +336,7 @@ protected:
     bool TrackLocalMap();
 
     int SearchLocalPoints();
-    void SearchAdditionalMatchesInFrame(const double time_for_search, Frame & F);
+    void SearchAdditionalMatchesInFrame(const double time_for_search, Frame &F);
 
     void PredictJacobianNextFrame(const double time_for_predict, const size_t pred_horizon);
 
@@ -294,7 +344,6 @@ protected:
     //
     bool NeedNewKeyFrame_Experimental();
     void CreateNewKeyFrame();
-
 
     void PlotFrameWithPointMatches();
 
@@ -305,35 +354,41 @@ protected:
     bool mbVO;
 
     //Other Thread Pointers
-    LocalMapping* mpLocalMapper;
-    LoopClosing* mpLoopClosing;
+    LocalMapping *mpLocalMapper;
+    LoopClosing *mpLoopClosing;
 
     //ORB
-    ORBextractor* mpORBextractorLeft, *mpORBextractorRight;
-    ORBextractor* mpIniORBextractor;
+    ORBextractor *mpORBextractorLeft, *mpORBextractorRight;
+    ORBextractor *mpIniORBextractor;
 
     //BoW
-    ORBVocabulary* mpORBVocabulary;
-    KeyFrameDatabase* mpKeyFrameDB;
+    ORBVocabulary *mpORBVocabulary;
+    KeyFrameDatabase *mpKeyFrameDB;
 
     // Initalization (only for monocular)
-    Initializer* mpInitializer;
+    Initializer *mpInitializer;
 
     //Local Map
-    KeyFrame* mpReferenceKF;
-    std::vector<KeyFrame*> mvpLocalKeyFrames;
-    std::vector<MapPoint*> mvpLocalMapPoints;
-    
+    KeyFrame *mpReferenceKF;
+    std::vector<KeyFrame *> mvpLocalKeyFrames;
+    std::vector<MapPoint *> mvpLocalMapPoints;
+
     // System
-    System* mpSystem;
-    
+    System *mpSystem;
+
     //Drawers
-    Viewer* mpViewer;
-    FrameDrawer* mpFrameDrawer;
-    MapDrawer* mpMapDrawer;
+    Viewer *mpViewer;
+    FrameDrawer *mpFrameDrawer;
+    MapDrawer *mpMapDrawer;
 
     //Map
-    Map* mpMap;
+    Map *mpMap;
+
+    // #ifdef ENABLE_WHITE_BALANCE
+
+    // cv::Ptr<cv::xphoto::WhiteBalancer> mpBalancer;
+
+    // #endif
 
     //Calibration matrix
     cv::Mat mK;
@@ -347,8 +402,10 @@ protected:
     cv::Mat mMap1_l, mMap2_l, mMap1_r, mMap2_r;
 
     //New KeyFrame rules (according to fps)
-    int mMinFrames;
-    int mMaxFrames;
+    //    int mMinFrames;
+    //    int mMaxFrames;
+    unsigned long mMinFrames;
+    unsigned long mMaxFrames;
 
     // Threshold close/far points
     // Points seen as close by the stereo/RGBD sensor are considered reliable
@@ -366,11 +423,14 @@ protected:
     //Current matches in frame
     int mnMatchesInliers;
 
+    // Number of visible map points at current KF
+    double mNumVisibleMpt;
+
     //Last Frame, KeyFrame and Relocalisation Info
-    KeyFrame* mpLastKeyFrame;
+    KeyFrame *mpLastKeyFrame;
     Frame mLastFrame;
-    unsigned int mnLastKeyFrameId;
-    unsigned int mnLastRelocFrameId;
+    unsigned long mnLastKeyFrameId;
+    unsigned long mnLastRelocFrameId;
 
     //Motion Model
     cv::Mat mVelocity;
@@ -378,15 +438,19 @@ protected:
     //Color order (true RGB, false BGR, ignored if grayscale)
     bool mbRGB;
 
-    list<MapPoint*> mlpTemporalPoints;
+    std::list<MapPoint *> mlpTemporalPoints;
+
+    // planned odom for anticipation in good graph
+    // 1st: timeStamp;   2nd: mTcw
+    std::vector<std::pair<double, cv::Mat>> mvOdomPlanned;
+    int mOdomTrackIdx, mOdomLBAIdx;
 
     //
     //    int budget_matching_in_track = 150; // 60; // 100; //
 
     std::ofstream f_realTimeTrack;
-
 };
 
-} //namespace ORB_SLAM
+} // namespace ORB_SLAM2
 
 #endif // TRACKING_H

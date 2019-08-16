@@ -1267,8 +1267,7 @@ bool Observability::setSelction_Number(const size_t num_good_inlier,
 
 int Observability::runActiveMapMatching(Frame *pFrame,
                                         const size_t mat_type,
-                                        arma::mat &mBaseInfoMat,
-//                                        const arma::mat &mBaseInfoMat,
+                                        const arma::mat &mBaseInfoMat,
                                         const float th,
                                         ORBmatcher &mORBMatcher,
                                         const int num_to_match,
@@ -1297,7 +1296,7 @@ int Observability::runActiveMapMatching(Frame *pFrame,
     timer.tic();
 
     // iteratively search for the most informative lmk
-//    arma::mat curMat = mBaseInfoMat;
+    arma::mat curMat = mBaseInfoMat;
     arma::mat H_disp;
     int thStereo = (ORBmatcher::TH_HIGH+ORBmatcher::TH_LOW)/2;
     double curCost = 0;
@@ -1389,7 +1388,7 @@ int Observability::runActiveMapMatching(Frame *pFrame,
             }
 
             // else, the queried map point is updated in time, and being assessed with potential info gain
-            double curDet = logDet( mBaseInfoMat + mMapPoints->at(queIdx)->ObsMat );
+            double curDet = logDet( curMat + mMapPoints->at(queIdx)->ObsMat );
 #ifdef INFORMATION_EFFICIENCY_SCORE
             heapSubset.push(SimplePoint(queIdx, curDet / double(curCost + mMapPoints->at(queIdx)->mvMatchCandidates.size())));
 #else
@@ -1491,11 +1490,11 @@ int Observability::runActiveMapMatching(Frame *pFrame,
                     if (mat_type == ORB_SLAM2::FRAME_HYBRID_MATRIX || mat_type == ORB_SLAM2::MAP_HYBRID_MATRIX) {
                         //
                         arma::mat Hyb = arma::join_vert(H_rw, H_rw * this->kinematic[this->mKineIdx].F);
-                        mBaseInfoMat = mBaseInfoMat + Hyb.t() * Hyb;
+                        curMat = curMat + Hyb.t() * Hyb;
                     }
                     else if (mat_type == ORB_SLAM2::FRAME_INFO_MATRIX || mat_type == ORB_SLAM2::MAP_INFO_MATRIX) {
                         //
-                        mBaseInfoMat = mBaseInfoMat + H_rw.t() * H_rw;
+                        curMat = curMat + H_rw.t() * H_rw;
                     }
                     else {
                         // TODO

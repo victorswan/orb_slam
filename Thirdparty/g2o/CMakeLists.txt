@@ -13,7 +13,9 @@ ENDIF()
 
 MESSAGE(STATUS "BUILD TYPE:" ${CMAKE_BUILD_TYPE})
 
-SET (G2O_LIB_TYPE SHARED)
+IF(NOT G2O_LIB_TYPE)
+  SET(G2O_LIB_TYPE "STATIC") # "SHARED"
+ENDIF(NOT G2O_LIB_TYPE)
 
 # There seems to be an issue with MSVC8
 # see http://eigen.tuxfamily.org/bz/show_bug.cgi?id=83
@@ -55,8 +57,19 @@ IF(OPENMP_FOUND AND G2O_USE_OPENMP)
 ENDIF(OPENMP_FOUND AND G2O_USE_OPENMP)
 
 # Compiler specific options for gcc
-SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native ") 
-SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -march=native") 
+
+# Check architecture
+IF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+    add_definitions("-DENABLE_SSE")
+    MESSAGE("SSE flags: " ${SSE_FLAGS})
+    # Optimized for Jetson TX2 only; refer to https://devtalk.nvidia.com/default/topic/1028179/jetson-tx2/gcc-options-for-tx2
+    SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffast-math -flto -march=armv8-a+crypto -mcpu=cortex-a57+crypto ") 
+    SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}     -O3 -ffast-math -flto -march=armv8-a+crypto -mcpu=cortex-a57+crypto") 
+ELSE()
+    SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native ") 
+    SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}     -O3 -march=native") 
+ENDIF()
+
 
 # activate warnings !!!
 SET(g2o_C_FLAGS "${g2o_C_FLAGS} -Wall -W")
@@ -67,9 +80,10 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${g2o_CXX_FLAGS}")
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${g2o_C_FLAGS}")
 
 # Find Eigen3
-SET( G2O_EIGEN3_INCLUDE /usr/include/eigen3 )
+# SET( G2O_EIGEN3_INCLUDE /usr/include/eigen3 )
+SET( G2O_EIGEN3_INCLUDE /opt/eigen33/include/eigen3/ )
 SET(EIGEN3_INCLUDE_DIR ${G2O_EIGEN3_INCLUDE})
-FIND_PACKAGE(Eigen3 3.1.0 REQUIRED)
+FIND_PACKAGE(Eigen3 3.3.0 REQUIRED)
 IF(EIGEN3_FOUND)
   SET(G2O_EIGEN3_INCLUDE ${EIGEN3_INCLUDE_DIR} CACHE PATH "Directory of Eigen3")
 ELSE(EIGEN3_FOUND)

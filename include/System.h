@@ -18,17 +18,18 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
 #include <string>
 #include <thread>
 #include <opencv2/core/core.hpp>
+#include <boost/filesystem.hpp>
 
 /* Add this line to fix problem "Eigen deprecated"*/
 #include <unistd.h>
 
+#include "Converter.h"
 #include "Tracking.h"
 #include "FrameDrawer.h"
 #include "MapDrawer.h"
@@ -54,14 +55,14 @@ class System
 {
 public:
     // Input sensor
-    enum eSensor{
-        MONOCULAR=0,
-        STEREO=1,
-        RGBD=2
+    enum eSensor
+    {
+        MONOCULAR = 0,
+        STEREO = 1,
+        RGBD = 2
     };
 
 public:
-
     // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
     System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, const bool bUseViewer = true);
 
@@ -116,36 +117,41 @@ public:
     // See format details at: http://www.cvlibs.net/datasets/kitti/eval_odometry.php
     void SaveTrajectoryKITTI(const string &filename);
 
-    //
     void SaveTrackingLog(const string &filename);
-    void SaveGFLog(const string &filename);
+    void SaveMappingLog(const string &filename);
 
+    void SetRealTimeFileStream(const string &track_fname, const string &BA_fname);
     void SetRealTimeFileStream(const string &filename);
 
+    //
+    void SetBudgetPerFrame(const double budget_per_frame);
+    void SetConstrPerFrame(const size_t constr_per_frame);
 
-    void SetBudgetPerFrame(const size_t budget_per_frame);
-    
+#ifdef ENABLE_MAP_IO
+    //
+    void SaveMap(const std::string &map_path);
+    void LoadMap(const std::string &map_path);
+#endif
 
-    //    // TODO: Save/Load functions
-    //    void SaveMap(const std::string &map_path);
-    //    void LoadMap(const std::string &map_path);
+#if defined ENABLE_ANTICIPATION_IN_GRAPH || defined PRED_WITH_ODOM
+    void LoadOdomPlanned(const std::string &odom_path);
+#endif
 
     // Information from most recent processed frame
     // You can call this right after TrackMonocular (or stereo or RGBD)
     int GetTrackingState();
-    std::vector<MapPoint*> GetTrackedMapPoints();
+    std::vector<MapPoint *> GetTrackedMapPoints();
     std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
+
+    void ForceRelocTracker();
 
     //private:
 public:
-
-
     //
     void SaveLmkLog(const std::string &filename);
     void GrabAllLmkLog();
     std::vector<LmkLog> logLmkLife;
     //
-
 
     // frame counter after track loss
     size_t mFrameLossTrack;
@@ -154,37 +160,37 @@ public:
     eSensor mSensor;
 
     // ORB vocabulary used for place recognition and feature matching.
-    ORBVocabulary* mpVocabulary;
+    ORBVocabulary *mpVocabulary;
 
     // KeyFrame database for place recognition (relocalization and loop detection).
-    KeyFrameDatabase* mpKeyFrameDatabase;
+    KeyFrameDatabase *mpKeyFrameDatabase;
 
     // Map structure that stores the pointers to all KeyFrames and MapPoints.
-    Map* mpMap;
+    Map *mpMap;
 
     // Tracker. It receives a frame and computes the associated camera pose.
     // It also decides when to insert a new keyframe, create some new MapPoints and
     // performs relocalization if tracking fails.
-    Tracking* mpTracker;
+    Tracking *mpTracker;
 
     // Local Mapper. It manages the local map and performs local bundle adjustment.
-    LocalMapping* mpLocalMapper;
+    LocalMapping *mpLocalMapper;
 
     // Loop Closer. It searches loops with every new keyframe. If there is a loop it performs
     // a pose graph optimization and full bundle adjustment (in a new thread) afterwards.
-    LoopClosing* mpLoopCloser;
+    LoopClosing *mpLoopCloser;
 
     // The viewer draws the map and the current camera pose. It uses Pangolin.
-    Viewer* mpViewer;
+    Viewer *mpViewer;
 
-    FrameDrawer* mpFrameDrawer;
-    MapDrawer* mpMapDrawer;
+    FrameDrawer *mpFrameDrawer;
+    MapDrawer *mpMapDrawer;
 
     // System threads: Local Mapping, Loop Closing, Viewer.
     // The Tracking thread "lives" in the main execution thread that creates the System object.
-    std::thread* mptLocalMapping;
-    std::thread* mptLoopClosing;
-    std::thread* mptViewer;
+    std::thread *mptLocalMapping;
+    std::thread *mptLoopClosing;
+    std::thread *mptViewer;
 
     // Reset flag
     std::mutex mMutexReset;
@@ -197,11 +203,13 @@ public:
 
     // Tracking state
     int mTrackingState;
-    std::vector<MapPoint*> mTrackedMapPoints;
+    std::vector<MapPoint *> mTrackedMapPoints;
     std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
     std::mutex mMutexState;
+
+    unsigned long max_KF_Id, max_Pt_Id;
 };
 
-}// namespace ORB_SLAM
+} // namespace ORB_SLAM2
 
 #endif // SYSTEM_H

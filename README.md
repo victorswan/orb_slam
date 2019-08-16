@@ -1,63 +1,106 @@
 # Good Feature Matching Version of ORB-SLAM2
 
-Good feature matching is an enhancement module that is designed for feature-based BA SLAM, such as ORB-SLAM2.  The main advantage of good feature matching, as opposed to the conventional batch feature matching, is the better trade-off of performance-efficiency.  
+**Good feature matching** (IROS18, TRO19) is an enhancement module that is designed for feature-based BA SLAM, such as ORB-SLAM2.  The main advantage of good feature matching, as opposed to the conventional batch feature matching, is the better trade-off of performance-efficiency.  
 
 <figure>
-  <img src="https://github.com/YipuZhao/GF_ORB_SLAM/blob/master/batch_script/RMSE_vs_Latency_EuRoC.png" alt="EuRoC" style="width:100%">
+  <img src="https://github.com/ivalab/GF_ORB_SLAM/blob/master/batch_script/RMSE_vs_Latency_EuRoC.png" alt="EuRoC" style="width:100%">
   <figcaption>Performance vs. latency evaluation on EuRoC monocular sequences (left-cam only)</figcaption>
 </figure>
 
-Compared with the previous version of [GF](https://github.com/YipuZhao/GF_ORB_SLAM), we include several additioanl features in this repo:
+Compared with the previous version of [GF](https://github.com/ivalab/GF_ORB_SLAM), we also introduce **Map Hashing** (ICRA19), which is designed to bound the cost of lcoal map related operations in long-term, large-scale VSLAM.  
+
+<a href="http://www.youtube.com/watch?feature=player_embedded&v=mnIf4PPqGHY
+" target="_blank"><img src="https://github.com/ivalab/gf_orb_slam2/blob/catkin/maphash_demo.png" 
+alt="SLAM View of MapHash vs. Baseline ORB" width="760" height="320" border="10" /></a>
+
+As the central part of autonomous navigation stack developed at Georgia Tech IVALab, GF-ORB-SLAM 2 supports **additional features** as follows:
  - this repo is based on ORB-SLAM2, which supports monocular, stereo and rgb-d visual input;
- - GPU accelerated FAST detection (uncomment Macro **CUDA_ACC_FAST** in ORBextractor.h to enable it);
- - sped-up lazy stereo matching (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in Frame.h to enable it);
- - to be included ~~map saving & loading modules~~
- - to be included ~~map hash feature~~
- - to be included ~~catkinize~~
+ - GPU accelerated FAST detection (uncomment Macro **CUDA_ACC_FAST** in **ORBextractor.h** to enable it);
+ - sped-up lazy stereo matching (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in **Frame.h** to enable it; for fisheye lens, uncomment **USE_FISHEYE_DISTORTION** as well);
+ - budget awared local BA with Good Graph selection (uncomment Macro **ENABLE_GOOD_GRAPH** in **Optimizer.h** & **ENABLE_ANTICIPATION_IN_GRAPH** in **Frame.h** to enable it; by default the desired path from controller / planner is valid and published to rostopic "/desired_path")
+ - map saving & loading modules (uncomment Macro **ENABLE_MAP_IO** in **Frame.h** to enable them)
+ - Pose initialization with ChAruco (uncomment Macro **INIT_WITH_ARUCHO** in **Tracking.h** to enable it);
+ - catkinize (default; for non-ros usage, check out the master branch)
  - to be included ~~visual inertial fusion~~
 
 ## Build & Run
 
-To build GF-ORB-SLAM2, first clone the repo to your ros workspace
+To build GF-ORB-SLAM2, first clone the repo to your catkin workspace
 
-	git clone git@github.com:YipuZhao/GF_ORB_SLAM2.git
+    cd ~/catkin_ws/src && git clone https://github.com/ivalab/gf_orb_slam2.git && git checkout catkin
 
-Then follow the instructions of ORB-SLAM to prepare the dependencies of ORB-SLAM: eigen, cholmod, gl/glew.  
-On top of that, build additional dependencies for good feature by calling
+Then build dependencies (by default we assume a GPU is available for opencv; otherwise use the non-gpu build cmd in build_dep.sh accordingly)
 
-	./build_dep.sh
+    cd gf_orb_slam2 && ./build_dep.sh && ./build_supports.sh
 
-The last step is to build the GF-ORB-SLAM2 itself
+Now build the GF-ORB-SLAM2 package with GPU
 
-	./build.sh
+    catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG -march=native" -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG -march=native"
+    catkin build --this
 
-To run GF-ORB-SLAM2, please refer to some example batch evaluation scripts at folder 
+or without GPU:
 
-	batch_script
+    catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG -march=native" -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG -march=native"
+    catkin build --this -DENABLE_CUDA_IN_OPENCV=False
 
-Some example configurations for public benchmarks are available by cloning the following repo and place it at the same ros workspace as GF-ORB-SLAM2
+We recommend converting the ORB vocabulary to binary format, by calling
 
-	git clone git@github.com:YipuZhao/ORB_Data.git
+    ./tools/bin_vocabulary
 
-## Reference(s)
+To run GF-ORB-SLAM2 on public benchmarks, please refer to batch evaluation scripts at folder 
 
-If you use GF-ORB-SLAM2 in an academic work, please cite the following papers:
+    batch_script
+
+or follow the example calls at **rosrun_cmd.md** for your own sensor / sequence. 
+
+Similar to original ORB-SLAM2, the camera parameters shall be provided in yaml format.  Some example configurations for public benchmarks are available by cloning the following repo and place it at the same catkin workspace as GF-ORB-SLAM2
+
+    cd ~/catkin_ws/src && git clone https://github.com/ivalab/ORB_Data.git
+
+## References
+
+If you use features in GF-ORB-SLAM2 at an academic work, please cite the following papers accordingly:
+
+**Good Feature Matching**:
 	
 	@article{zhao2019good,
 	  title={Good Feature Matching: Towards Accurate, Robust VO/VSLAM with Low Latency},
 	  author={Zhao, Yipu and Vela, Patricio A.},
 	  journal={submitted to IEEE Transactions on Robotics},
 	  year={2019}
-	}
+	}	
 
 	@inproceedings{zhao2018good,
 	  title={Good Feature Selection for Least Squares Pose Optimization in VO/VSLAM},
 	  author={Zhao, Yipu and Vela, Patricio A},
-	  booktitle={2018 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+	  booktitle={IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
 	  pages={1183--1189},
-	  year={2018},
-	  organization={IEEE}
+	  year={2018}
 	}
+
+**Map Hashing**:
+
+	@article{zhao2019low,
+	  title={Low-latency Visual SLAM with Appearance-Enhanced Local Map Building},
+	  author={Zhao, Yipu and Ye, Wenkai and Vela, Patricio A},
+	  journal={IEEE International Conference on Robotics and Automation (ICRA)},
+	  year={2019}
+	}
+
+**Good Graph Selection**:
+
+	@article{zhao2019graph,
+	  title={Good Graph to Optimize: Cost-Effective, Budget-Aware Bundle Adjustment in Visual SLAM},
+	  author={Zhao, Yipu and Smith, Justin S. and Vela, Patricio A.},
+	  journal={submitted to IEEE Transactions on Robotics},
+	  year={2019}
+	} 
+
+## Contact information
+
+- Yipu Zhao		yipu.zhao@gatech.edu
+- Wenkai Ye		wye1206@gatech.edu
+- Patricio A. Vela	pvela@gatech.edu
 
 ---
 # ORB-SLAM2

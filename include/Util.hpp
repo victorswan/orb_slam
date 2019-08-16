@@ -23,8 +23,11 @@
 #ifndef UTIL_HPP
 #define UTIL_HPP
 
-#include<vector>
-#include<algorithm>
+#include <vector>
+#include <algorithm>
+
+#include <Eigen/Core>
+//#include <unsupported/Eigen/Splines>
 
 #define ARMA_NO_DEBUG
 #include "armadillo"
@@ -40,19 +43,22 @@
 //
 #include <opencv2/features2d.hpp>
 
-#define N_MAX_ITER_SVD                  72881	/* Rosser's matrix converges (tol=1e-16) */
+#define N_MAX_ITER_SVD 72881 /* Rosser's matrix converges (tol=1e-16) */
 
-namespace ORB_SLAM2 {
+namespace ORB_SLAM2
+{
 
 //-------------------------------
-class SimplePoint {
+class SimplePoint
+{
 public:
-    SimplePoint(const int& idx_, const double& score_) {
+    SimplePoint(const int &idx_, const double &score_)
+    {
         this->idx = idx_;
         this->score = score_;
     }
 
-    bool operator<(const SimplePoint& right) const              //overloaded < operator
+    bool operator<(const SimplePoint &right) const //overloaded < operator
     {
         return this->score < right.score;
     }
@@ -61,25 +67,27 @@ public:
     double score;
 };
 
-
-class GoodPoint {
+class GoodPoint
+{
 public:
     // simplified version of construction func
-    GoodPoint(const size_t& idx, const double& obs_score) {
+    GoodPoint(const size_t &idx, const double &obs_score)
+    {
         this->idx = idx;
         this->obs_score = obs_score;
         this->selected = false;
     }
 
-    GoodPoint(const size_t& idx, const double& obs_score, const arma::vec& obs_vector) {
+    GoodPoint(const size_t &idx, const double &obs_score, const arma::vec &obs_vector)
+    {
         this->idx = idx;
         this->obs_score = obs_score;
         this->obs_vector = obs_vector;
         this->selected = false;
     }
 
-
-    GoodPoint(const size_t& idx, const double& obs_score, const arma::mat& obs_matrix) {
+    GoodPoint(const size_t &idx, const double &obs_score, const arma::mat &obs_matrix)
+    {
         this->idx = idx;
         this->obs_score = obs_score;
         this->obs_block = obs_matrix;
@@ -87,8 +95,8 @@ public:
         this->upper_bound = -DBL_MAX;
     }
 
-
-    GoodPoint(const size_t& idx, const double& obs_score, const cv::Mat& wPt, const cv::KeyPoint& iPt) {
+    GoodPoint(const size_t &idx, const double &obs_score, const cv::Mat &wPt, const cv::KeyPoint &iPt)
+    {
         this->idx = idx;
         this->obs_score = obs_score;
         //
@@ -113,49 +121,49 @@ public:
     float pW[3];
     bool selected;
 
-
-    static bool rankObsScore_descend(const GoodPoint & t1,  const GoodPoint & t2) {
+    static bool rankObsScore_descend(const GoodPoint &t1, const GoodPoint &t2)
+    {
         return t1.obs_score > t2.obs_score;
     }
 
-    static bool rankObsScore_ascend(const GoodPoint & t1,  const GoodPoint & t2) {
+    static bool rankObsScore_ascend(const GoodPoint &t1, const GoodPoint &t2)
+    {
         return t1.obs_score < t2.obs_score;
     }
 
-    static bool rankUpperBound_descend(const GoodPoint & t1,  const GoodPoint & t2) {
+    static bool rankUpperBound_descend(const GoodPoint &t1, const GoodPoint &t2)
+    {
         return t1.upper_bound > t2.upper_bound;
     }
-
 };
 
-class PinHoleCamera {
+class PinHoleCamera
+{
 public:
     // TODO: change nRows and nCols to int?
     PinHoleCamera(double _f, size_t _nRows, size_t _nCols, double _Cx, double _Cy,
-                  double _k1, double _k2, double _dx, double _dy):
-        nRows(_nRows), nCols(_nCols), Cx(_Cx), Cy(_Cy), k1(_k1), k2(_k2), dx(_dx), dy(_dy)  {
+                  double _k1, double _k2, double _dx, double _dy) : nRows(_nRows), nCols(_nCols), Cx(_Cx), Cy(_Cy), k1(_k1), k2(_k2), dx(_dx), dy(_dy)
+    {
 
         fu = _f / _dx;
         fv = _f / _dy;
 
-        K  << fu << 0.0 << _Cx << arma::endr
-           << 0.0 << fv << _Cy << arma::endr
-           << 0.0 << 0.0 <<  1.0 << arma::endr;
+        K << fu << 0.0 << _Cx << arma::endr
+          << 0.0 << fv << _Cy << arma::endr
+          << 0.0 << 0.0 << 1.0 << arma::endr;
     }
 
-
     PinHoleCamera(double _fu, double _fv, int _nRows, int _nCols, double _Cx, double _Cy,
-                  double _k1, double _k2):
-        fu(_fu), fv(_fv), nRows(_nRows), nCols(_nCols), Cx(_Cx), Cy(_Cy), k1(_k1), k2(_k2) {
+                  double _k1, double _k2) : fu(_fu), fv(_fv), nRows(_nRows), nCols(_nCols), Cx(_Cx), Cy(_Cy), k1(_k1), k2(_k2)
+    {
 
         dx = 0.0112;
         dy = _fu * dx / _fv;
 
-        K  << _fu << 0.0 << _Cx << arma::endr
-           << 0.0 << _fv << _Cy << arma::endr
-           << 0.0 << 0.0 <<  1.0 << arma::endr;
+        K << _fu << 0.0 << _Cx << arma::endr
+          << 0.0 << _fv << _Cy << arma::endr
+          << 0.0 << 0.0 << 1.0 << arma::endr;
     }
-
 
     double fu, fv;
     int nRows, nCols;
@@ -181,10 +189,12 @@ struct KineStruct
 };
 
 // Structure for reporting time cost per module
-class TimeLog {
+class TrackingLog
+{
 public:
     //
-    void setZero() {
+    void setZero()
+    {
         frame_time_stamp = 0;
         time_rectification = 0;
         time_ORB_extraction = 0;
@@ -209,12 +219,15 @@ public:
         time_update_motion = 0;
         time_post_proc = 0;
         //
+        time_hash_insert = 0;
+        time_hash_query = 0;
+        //
+        lmk_hash_dynamics = 0;
+        lmk_local_map = 0;
         lmk_num_motion = 0;
         lmk_num_frame = 0;
         lmk_num_map = 0;
         lmk_num_BA = 0;
-        //
-        log_det_frame = 0;
         // obselet
         lmk_num_good = 0;
         lmk_num_inlier_good = 0;
@@ -251,20 +264,112 @@ public:
     double time_update_motion;
     double time_post_proc;
     //
-    double lmk_num_motion;
-    double lmk_num_frame;
-    double lmk_num_map;
-    double lmk_num_BA;
+    // map hash
+    double time_hash_insert;
+    double time_hash_query;
     //
-    double log_det_frame;
+    size_t lmk_num_motion;
+    size_t lmk_num_frame;
+    size_t lmk_num_map;
+    size_t lmk_local_map;
+    size_t lmk_num_BA;
+    size_t lmk_hash_dynamics;
+
     // obselet
-    double lmk_num_good;
-    double lmk_num_inlier_good;
+    size_t lmk_num_good;
+    size_t lmk_num_inlier_good;
 };
 
-class FramePose {
+class MappingLog
+{
 public:
-    FramePose(const double &time_stamp, const cv::Mat &homm) {
+    //
+    //    void setZero()
+    //    {
+    //        frame_time_stamp = 0;
+    //        //
+    //        time_proc_new_keyframe = 0;
+    //        time_culling = 0;
+    //        time_tri_new_map_point = 0;
+    //        time_srh_more_neighbor = 0;
+    //        time_local_BA = 0;
+    //        //
+    //        num_fixed_KF = 0;
+    //        num_free_KF = 0;
+    //        num_Point = 0;
+    //    }
+
+    void setGGTimerZero() {
+        time_gg_prediction = 0;
+        time_gg_insert_vertex = 0;
+        time_gg_jacobian = 0;
+        time_gg_preproc = 0;
+        time_gg_rnd_query = 0;
+        time_gg_schur = 0;
+        time_gg_permute = 0;
+        time_gg_cholesky = 0;
+        time_gg_postproc = 0;
+        time_gg_optimization = 0;
+        time_gg_lba_budget = 0;
+    }
+
+    void setNaN()
+    {
+        time_proc_new_keyframe = -1;
+        time_culling = -1;
+        time_tri_new_map_point = -1;
+        time_srh_more_neighbor = -1;
+        time_local_BA = -1;
+        //
+        time_gg_prediction = -1;
+        time_gg_preproc = -1;
+        time_gg_insert_vertex = -1;
+        time_gg_jacobian = -1;
+        time_gg_rnd_query = -1;
+        time_gg_schur = -1;
+        time_gg_permute = -1;
+        time_gg_cholesky = -1;
+        time_gg_postproc = -1;
+        time_gg_optimization = -1;
+        time_gg_lba_budget = -1;
+        //
+        num_fixed_KF = 0;
+        num_free_KF = 0;
+        num_Point = 0;
+    }
+
+    double frame_time_stamp;
+    //
+    double time_proc_new_keyframe;
+    double time_culling;
+    double time_tri_new_map_point;
+    double time_srh_more_neighbor;
+    double time_local_BA;
+
+    // time cost break down for good graph
+    double time_gg_prediction;
+    double time_gg_insert_vertex;
+    double time_gg_jacobian;
+    double time_gg_preproc;
+    double time_gg_rnd_query;
+    double time_gg_schur;
+    double time_gg_permute;
+    double time_gg_cholesky;
+    double time_gg_postproc;
+    double time_gg_optimization;
+    // budget assigned via anticipation
+    double time_gg_lba_budget;
+
+    size_t num_fixed_KF;
+    size_t num_free_KF;
+    size_t num_Point;
+};
+
+class FramePose
+{
+public:
+    FramePose(const double &time_stamp, const cv::Mat &homm)
+    {
         //        cout << "create frame pose obj" << endl;
         this->time_stamp = time_stamp;
         //        cout << "input pose matrix(0,3) " << homm.at<float>(0,3) << endl;
@@ -278,28 +383,84 @@ public:
 };
 
 // Lmk life log
-class LmkLog {
+class LmkLog
+{
 public:
-  LmkLog(const int &id_, const int &life_) {
-    id = id_;
-    life = life_;
-  }
+    LmkLog(const int &id_, const int &life_)
+    {
+        id = id_;
+        life = life_;
+    }
 
-  int id;
-  int life;
+    int id;
+    int life;
+};
+
+// Structure for keypoint I/O
+class KeyPointLog
+{
+public:
+    bool ReadFromYAML(std::string kpt_path)
+    {
+
+        cv::FileStorage fs(kpt_path.c_str(), cv::FileStorage::READ);
+        if (!fs.isOpened())
+        {
+            std::cout << "func ReadFromYAML: keypoint file not found!" << std::endl;
+            mTimeStamp = -1;
+            mvKeysLeft.clear();
+            mvKeysRight.clear();
+            return false;
+        }
+
+        //    double val_tmp;
+        //    fs["nNextId"] >> val_tmp; nNextId = (unsigned long)val_tmp;
+        //    fs["mnId"] >> val_tmp; mnId = (unsigned long)val_tmp;
+
+        fs["mTimeStamp"] >> mTimeStamp;
+        //    fs["mK"] >> mK;
+
+        cv::FileNode mvKeysFileNode = fs["mvKeys"]; //>> no operator overloading for KeyPoint
+        read(mvKeysFileNode, mvKeysLeft);
+        //    cv::FileNode mvKeysUnFileNode = fs["mvKeysUn"];
+        //    read(mvKeysUnFileNode, mvKeysUn);
+        //    assert(mvKeysUn.size() == mvKeys.size());
+        fs["mDescriptors"] >> mDiscLeft;
+        assert(mvKeysLeft.size() == mDiscLeft.rows);
+
+        mvKeysFileNode = fs["mvKeysRight"];
+        read(mvKeysFileNode, mvKeysRight);
+        fs["mDescriptorsRight"] >> mDiscRight;
+        assert(mvKeysRight.size() == mDiscRight.rows);
+
+        //    fs["mvuRight"] >> mvuRight;
+        //    assert(mvuRight.size() == mvKeys.size());
+        //    fs["mvDepth"] >> mvDepth;
+        //    assert(mvDepth.size() == mvKeys.size());
+        return true;
+    }
+
+    //
+    double mTimeStamp;
+    std::vector<cv::KeyPoint> mvKeysLeft;
+    std::vector<cv::KeyPoint> mvKeysRight;
+    cv::Mat mDiscLeft;
+    cv::Mat mDiscRight;
 };
 
 //
 // inlier functions that support quaternion manipulation
 //
-inline arma::rowvec qconj(arma::rowvec q) {
+inline arma::rowvec qconj(arma::rowvec q)
+{
 
     q = -1.0 * q;
     q[0] = -q[0];
     return q;
 }
 
-inline arma::mat q2r(const arma::rowvec& q) {
+inline arma::mat q2r(const arma::rowvec &q)
+{
 
     double x, y, z, r;
     x = q[1];
@@ -308,34 +469,38 @@ inline arma::mat q2r(const arma::rowvec& q) {
     r = q[0];
 
     arma::mat R;
-    R << r*r+x*x-y*y-z*z << 2.0*(x*y -r*z)  <<  2.0*(z*x+r*y) << arma::endr
-      << 2.0*(x*y+r*z)   << r*r-x*x+y*y-z*z <<  2.0*(y*z-r*x) << arma::endr
-      << 2.0*(z*x-r*y)   << 2.0*(y*z+r*x)   <<  r*r-x*x-y*y+z*z << arma::endr;
+    R << r * r + x * x - y * y - z * z << 2.0 * (x * y - r * z) << 2.0 * (z * x + r * y) << arma::endr
+      << 2.0 * (x * y + r * z) << r * r - x * x + y * y - z * z << 2.0 * (y * z - r * x) << arma::endr
+      << 2.0 * (z * x - r * y) << 2.0 * (y * z + r * x) << r * r - x * x - y * y + z * z << arma::endr;
 
     return R;
 }
 
-inline arma::rowvec v2q(const arma::rowvec& v) {
+inline arma::rowvec v2q(const arma::rowvec &v)
+{
 
     //    double a = sqrt(dot(v, v));
     double a = arma::norm(v, 2);
 
     arma::rowvec u;
-    if (a > 0.0000001) {
+    if (a > 0.0000001)
+    {
         u = v / a;
     }
-    else {
+    else
+    {
         a = 0;
         u << 0 << 0 << 0 << arma::endr;
     }
 
     arma::rowvec q;
-    q << cos(a/2) << u[0] * sin(a/2) << u[1] * sin(a/2) << u[2] * sin(a/2) << arma::endr;
+    q << cos(a / 2) << u[0] * sin(a / 2) << u[1] * sin(a / 2) << u[2] * sin(a / 2) << arma::endr;
 
     return q;
 }
 
-inline arma::rowvec qProd(const arma::rowvec& q1, const arma::rowvec& q2) {
+inline arma::rowvec qProd(const arma::rowvec &q1, const arma::rowvec &q2)
+{
 
     double a, b, c, d;
     a = q1[0];
@@ -350,46 +515,47 @@ inline arma::rowvec qProd(const arma::rowvec& q1, const arma::rowvec& q2) {
     z = q2[3];
 
     arma::rowvec qr;
-    qr << a*w - b*x - c*y - d*z
-       << a*x + b*w + c*z - d*y
-       << a*y - b*z + c*w + d*x
-       << a*z + b*y - c*x + d*w << arma::endr;
+    qr << a * w - b * x - c * y - d * z
+       << a * x + b * w + c * z - d * y
+       << a * y - b * z + c * w + d * x
+       << a * z + b * y - c * x + d * w << arma::endr;
 
     return qr;
 }
 
-inline arma::rowvec qNormalize(const arma::rowvec& q) {
+inline arma::rowvec qNormalize(const arma::rowvec &q)
+{
 
     double qNorm = arma::norm(q, 2);
     arma::rowvec qn = q / qNorm;
     return qn;
 }
 
-inline double dq0_by_domegaA(const double & omegaA, const double & omega, const double & delta_t){
+inline double dq0_by_domegaA(const double &omegaA, const double &omega, const double &delta_t)
+{
 
     return (-delta_t / 2.0) * (omegaA / omega) * std::sin(omega * delta_t / 2.0);
 }
 
-inline double dqA_by_domegaA(const double & omegaA, const double & omega, const double & delta_t) {
+inline double dqA_by_domegaA(const double &omegaA, const double &omega, const double &delta_t)
+{
 
-    double result = (delta_t / 2.0) * omegaA * omegaA / (omega * omega)
-            * std::cos(omega * delta_t / 2.0)
-            + (1.0 / omega) * (1.0 - omegaA * omegaA / (omega * omega))
-            * std::sin(omega * delta_t / 2.0);
+    double result = (delta_t / 2.0) * omegaA * omegaA / (omega * omega) * std::cos(omega * delta_t / 2.0) + (1.0 / omega) * (1.0 - omegaA * omegaA / (omega * omega)) * std::sin(omega * delta_t / 2.0);
     return result;
 }
 
-inline double dqA_by_domegaB(const double & omegaA, const double & omegaB,
-                             const double & omega,  const double & delta_t) {
+inline double dqA_by_domegaB(const double &omegaA, const double &omegaB,
+                             const double &omega, const double &delta_t)
+{
 
     double result = (omegaA * omegaB / (omega * omega)) *
-            ( (delta_t / 2.0) * std::cos(omega * delta_t / 2.0)
-              - (1.0 / omega) * std::sin(omega * delta_t / 2.0) );
+            ((delta_t / 2.0) * std::cos(omega * delta_t / 2.0) - (1.0 / omega) * std::sin(omega * delta_t / 2.0));
     return result;
 }
 
-inline arma::mat dRq_times_a_by_dq(const arma::rowvec & q,
-                                   const arma::rowvec & aMat) {
+inline arma::mat dRq_times_a_by_dq(const arma::rowvec &q,
+                                   const arma::rowvec &aMat)
+{
 #ifndef ARMA_NO_DEBUG
     //    assert(aMat.n_rows == 3 && aMat.n_cols == 1);
     assert(aMat.n_cols == 3);
@@ -400,49 +566,51 @@ inline arma::mat dRq_times_a_by_dq(const arma::rowvec & q,
     double qy = q[2];
     double qz = q[3];
 
-    arma::mat dR_by_dq0(3,3), dR_by_dqx(3,3), dR_by_dqy(3,3), dR_by_dqz(3,3);
+    arma::mat dR_by_dq0(3, 3), dR_by_dqx(3, 3), dR_by_dqy(3, 3), dR_by_dqz(3, 3);
     //    dR_by_dq0 << 2.0*q0 << -2.0*qz << 2.0*qy << arma::endr
     //              << 2.0*qz << 2.0*q0  << -2.0*qx << arma::endr
     //              << -2.0*qy << 2.0*qx << 2.0*q0 << arma::endr;
-    dR_by_dq0 = { {2.0*q0, -2.0*qz, 2.0*qy},
-                  {2.0*qz, 2.0*q0, -2.0*qx},
-                  {-2.0*qy, 2.0*qx, 2.0*q0} };
+    dR_by_dq0 = {{2.0 * q0, -2.0 * qz, 2.0 * qy},
+                 {2.0 * qz, 2.0 * q0, -2.0 * qx},
+                 {-2.0 * qy, 2.0 * qx, 2.0 * q0}};
 
     //    dR_by_dqx << 2.0*qx << 2.0*qy << 2.0*qz << arma::endr
     //              << 2.0*qy << -2.0*qx << -2.0*q0 << arma::endr
     //              << 2.0*qz << 2.0*q0 << -2.0*qx << arma::endr;
-    dR_by_dqx = { {2.0*qx, 2.0*qy, 2.0*qz},
-                  {2.0*qy, -2.0*qx, -2.0*q0},
-                  {2.0*qz, 2.0*q0, -2.0*qx} };
+    dR_by_dqx = {{2.0 * qx, 2.0 * qy, 2.0 * qz},
+                 {2.0 * qy, -2.0 * qx, -2.0 * q0},
+                 {2.0 * qz, 2.0 * q0, -2.0 * qx}};
 
     //    dR_by_dqy << -2.0*qy << 2.0*qx << 2.0*q0 << arma::endr
     //              << 2.0*qx << 2.0*qy  << 2.0*qz << arma::endr
     //              << -2.0*q0 << 2.0*qz << -2.0*qy << arma::endr;
-    dR_by_dqy = { {-2.0*qy, 2.0*qx, 2.0*q0},
-                  {2.0*qx, 2.0*qy, 2.0*qz},
-                  {-2.0*q0, 2.0*qz, -2.0*qy} };
+    dR_by_dqy = {{-2.0 * qy, 2.0 * qx, 2.0 * q0},
+                 {2.0 * qx, 2.0 * qy, 2.0 * qz},
+                 {-2.0 * q0, 2.0 * qz, -2.0 * qy}};
 
     //    dR_by_dqz << -2.0*qz << -2.0*q0 << 2.0*qx << arma::endr
     //              << 2.0*q0 << -2.0*qz  << 2.0*qy << arma::endr
     //              << 2.0*qx << 2.0*qy << 2.0*qz << arma::endr;
-    dR_by_dqz = { {-2.0*qz, -2.0*q0, 2.0*qx},
-                  {2.0*q0, -2.0*qz, 2.0*qy},
-                  {2.0*qx, 2.0*qy, 2.0*qz} };
+    dR_by_dqz = {{-2.0 * qz, -2.0 * q0, 2.0 * qx},
+                 {2.0 * q0, -2.0 * qz, 2.0 * qy},
+                 {2.0 * qx, 2.0 * qy, 2.0 * qz}};
 
-    arma::mat RES = arma::zeros<arma::mat>(3,4);
-    RES(arma::span(0,2), arma::span(0,0)) = dR_by_dq0 * aMat.t();
-    RES(arma::span(0,2), arma::span(1,1)) = dR_by_dqx * aMat.t();
-    RES(arma::span(0,2), arma::span(2,2)) = dR_by_dqy * aMat.t();
-    RES(arma::span(0,2), arma::span(3,3)) = dR_by_dqz * aMat.t();
+    arma::mat RES = arma::zeros<arma::mat>(3, 4);
+    RES(arma::span(0, 2), arma::span(0, 0)) = dR_by_dq0 * aMat.t();
+    RES(arma::span(0, 2), arma::span(1, 1)) = dR_by_dqx * aMat.t();
+    RES(arma::span(0, 2), arma::span(2, 2)) = dR_by_dqy * aMat.t();
+    RES(arma::span(0, 2), arma::span(3, 3)) = dR_by_dqz * aMat.t();
 
     return RES;
 }
 
-inline arma::mat dqomegadt_by_domega(const arma::rowvec & omega, const double & delta_t) {
+inline arma::mat dqomegadt_by_domega(const arma::rowvec &omega, const double &delta_t)
+{
 
-    arma::mat RES = arma::zeros<arma::mat>(4,3);
+    arma::mat RES = arma::zeros<arma::mat>(4, 3);
     double omegamod = arma::norm(omega, 2);
-    if(fabs(omegamod) < 1e-8) {
+    if (fabs(omegamod) < 1e-8)
+    {
         //        return arma::zeros<arma::mat>(4,3);
         //        RES(1,0) = RES(2,1) = RES(3,2) = delta_t / 2;
         //        return RES;
@@ -450,9 +618,10 @@ inline arma::mat dqomegadt_by_domega(const arma::rowvec & omega, const double & 
         //            << delta_t / 2 << 0 << 0 << arma::endr
         //            << 0 << delta_t / 2 << 0 << arma::endr
         //            << 0 << 0 << delta_t / 2 << arma::endr;
-        RES = { {0, 0, 0}, {delta_t / 2, 0, 0}, {0, delta_t / 2, 0}, {0, 0, delta_t / 2} };
+        RES = {{0, 0, 0}, {delta_t / 2, 0, 0}, {0, delta_t / 2, 0}, {0, 0, delta_t / 2}};
     }
-    else {
+    else
+    {
         //        RES << dq0_by_domegaA(omega(0,0), omegamod, delta_t)
         //            << dq0_by_domegaA(omega(1,0), omegamod, delta_t)
         //            << dq0_by_domegaA(omega(2,0), omegamod, delta_t)
@@ -472,26 +641,18 @@ inline arma::mat dqomegadt_by_domega(const arma::rowvec & omega, const double & 
         //            << dqA_by_domegaB(omega(2,0), omega(1,0), omegamod, delta_t)
         //            << dqA_by_domegaA(omega(2,0), omegamod, delta_t)
         //            << arma::endr;
-        RES = { {
-                    dq0_by_domegaA(omega[0], omegamod, delta_t),
-                    dq0_by_domegaA(omega[1], omegamod, delta_t),
-                    dq0_by_domegaA(omega[2], omegamod, delta_t)
-                },
-                {
-                    dqA_by_domegaA(omega[0], omegamod, delta_t),
-                    dqA_by_domegaB(omega[0], omega[1], omegamod, delta_t),
-                    dqA_by_domegaB(omega[0], omega[2], omegamod, delta_t)
-                },
-                {
-                    dqA_by_domegaB(omega[1], omega[0], omegamod, delta_t),
-                    dqA_by_domegaA(omega[1], omegamod, delta_t),
-                    dqA_by_domegaB(omega[1], omega[2], omegamod, delta_t)
-                },
-                {
-                    dqA_by_domegaB(omega[2], omega[0], omegamod, delta_t),
-                    dqA_by_domegaB(omega[2], omega[1], omegamod, delta_t),
-                    dqA_by_domegaA(omega[2], omegamod, delta_t)
-                } };
+        RES = {{dq0_by_domegaA(omega[0], omegamod, delta_t),
+                dq0_by_domegaA(omega[1], omegamod, delta_t),
+                dq0_by_domegaA(omega[2], omegamod, delta_t)},
+               {dqA_by_domegaA(omega[0], omegamod, delta_t),
+                dqA_by_domegaB(omega[0], omega[1], omegamod, delta_t),
+                dqA_by_domegaB(omega[0], omega[2], omegamod, delta_t)},
+               {dqA_by_domegaB(omega[1], omega[0], omegamod, delta_t),
+                dqA_by_domegaA(omega[1], omegamod, delta_t),
+                dqA_by_domegaB(omega[1], omega[2], omegamod, delta_t)},
+               {dqA_by_domegaB(omega[2], omega[0], omegamod, delta_t),
+                dqA_by_domegaB(omega[2], omega[1], omegamod, delta_t),
+                dqA_by_domegaA(omega[2], omegamod, delta_t)}};
     }
     return RES;
 }
@@ -541,101 +702,112 @@ inline arma::mat dqomegadt_by_domega(const arma::rowvec & omega, const double & 
 
 //}
 
-inline arma::rowvec DCM2QUAT_float(const cv::Mat& a){
+inline arma::rowvec DCM2QUAT_float(const cv::Mat &a)
+{
 
     arma::mat q = arma::zeros<arma::rowvec>(4);
 
-    float trace = a.at<float>(0,0) + a.at<float>(1,1) + a.at<float>(2,2);
-    if( trace > 0 ) {// I changed M_EPSILON to 0
+    float trace = a.at<float>(0, 0) + a.at<float>(1, 1) + a.at<float>(2, 2);
+    if (trace > 0)
+    { // I changed M_EPSILON to 0
         //std::cout<<"Condition 1\n";
         float s = sqrtf(trace + 1.0f) * 2;
         q[0] = 0.25f * s;
-        q[1] = ( a.at<float>(2,1) - a.at<float>(1,2) ) / s;
-        q[2] = ( a.at<float>(0,2) - a.at<float>(2,0) ) / s;
-        q[3] = ( a.at<float>(1,0) - a.at<float>(0,1) ) / s;
+        q[1] = (a.at<float>(2, 1) - a.at<float>(1, 2)) / s;
+        q[2] = (a.at<float>(0, 2) - a.at<float>(2, 0)) / s;
+        q[3] = (a.at<float>(1, 0) - a.at<float>(0, 1)) / s;
     }
-    else {
-        if ( a.at<float>(0,0) > a.at<float>(1,1) && a.at<float>(0,0) > a.at<float>(2,2) ) {
+    else
+    {
+        if (a.at<float>(0, 0) > a.at<float>(1, 1) && a.at<float>(0, 0) > a.at<float>(2, 2))
+        {
             //std::cout<<"Condition 2\n";
-            float s = 2.0f * sqrtf( 1.0f + a.at<float>(0,0) - a.at<float>(1,1) - a.at<float>(2,2));
-            q[0] = (a.at<float>(2,1) - a.at<float>(1,2) ) / s;
+            float s = 2.0f * sqrtf(1.0f + a.at<float>(0, 0) - a.at<float>(1, 1) - a.at<float>(2, 2));
+            q[0] = (a.at<float>(2, 1) - a.at<float>(1, 2)) / s;
             q[1] = 0.25f * s;
-            q[2] = (a.at<float>(0,1) + a.at<float>(1,0) ) / s;
-            q[3] = (a.at<float>(0,2) + a.at<float>(2,0) ) / s;
+            q[2] = (a.at<float>(0, 1) + a.at<float>(1, 0)) / s;
+            q[3] = (a.at<float>(0, 2) + a.at<float>(2, 0)) / s;
         }
-        else if (a.at<float>(1,1) > a.at<float>(2,2)) {
+        else if (a.at<float>(1, 1) > a.at<float>(2, 2))
+        {
             //std::cout<<"Condition 3\n";
-            float s = 2.0f * sqrtf( 1.0f + a.at<float>(1,1) - a.at<float>(0,0) - a.at<float>(2,2));
-            q[0] = (a.at<float>(0,2) - a.at<float>(2,0) ) / s;
-            q[1] = (a.at<float>(0,1) + a.at<float>(1,0) ) / s;
+            float s = 2.0f * sqrtf(1.0f + a.at<float>(1, 1) - a.at<float>(0, 0) - a.at<float>(2, 2));
+            q[0] = (a.at<float>(0, 2) - a.at<float>(2, 0)) / s;
+            q[1] = (a.at<float>(0, 1) + a.at<float>(1, 0)) / s;
             q[2] = 0.25f * s;
-            q[3] = (a.at<float>(1,2) + a.at<float>(2,1) ) / s;
+            q[3] = (a.at<float>(1, 2) + a.at<float>(2, 1)) / s;
         }
-        else {
+        else
+        {
             //std::cout<<"Condition 4\n";
-            float s = 2.0f * sqrtf( 1.0f + a.at<float>(2,2) - a.at<float>(0,0) - a.at<float>(1,1) );
-            q[0] = (a.at<float>(1,0) - a.at<float>(0,1) ) / s;
-            q[1] = (a.at<float>(0,2) + a.at<float>(2,0) ) / s;
-            q[2] = (a.at<float>(1,2) + a.at<float>(2,1) ) / s;
+            float s = 2.0f * sqrtf(1.0f + a.at<float>(2, 2) - a.at<float>(0, 0) - a.at<float>(1, 1));
+            q[0] = (a.at<float>(1, 0) - a.at<float>(0, 1)) / s;
+            q[1] = (a.at<float>(0, 2) + a.at<float>(2, 0)) / s;
+            q[2] = (a.at<float>(1, 2) + a.at<float>(2, 1)) / s;
             q[3] = 0.25f * s;
         }
     }
 
-    if(q[0]<0)
-        q=-1.0*q;
+    if (q[0] < 0)
+        q = -1.0 * q;
 
     return q;
-
 }
 
-inline arma::rowvec DCM2QUAT_float(const arma::mat& a){
+inline arma::rowvec DCM2QUAT_float(const arma::mat &a)
+{
 
     arma::rowvec q = arma::zeros<arma::rowvec>(4);
 
-    float trace = a(0,0) + a(1,1) + a(2,2);
-    if( trace > 0 ) {// I changed M_EPSILON to 0
+    float trace = a(0, 0) + a(1, 1) + a(2, 2);
+    if (trace > 0)
+    { // I changed M_EPSILON to 0
         //std::cout<<"Condition 1\n";
         float s = sqrtf(trace + 1.0f) * 2;
         q[0] = 0.25f * s;
-        q[1] = ( a(2,1) - a(1,2) ) / s;
-        q[2] = ( a(0,2) - a(2,0) ) / s;
-        q[3] = ( a(1,0) - a(0,1) ) / s;
+        q[1] = (a(2, 1) - a(1, 2)) / s;
+        q[2] = (a(0, 2) - a(2, 0)) / s;
+        q[3] = (a(1, 0) - a(0, 1)) / s;
     }
-    else {
-        if ( a(0,0) > a(1,1) && a(0,0) > a(2,2) ) {
+    else
+    {
+        if (a(0, 0) > a(1, 1) && a(0, 0) > a(2, 2))
+        {
             //std::cout<<"Condition 2\n";
-            float s = 2.0f * sqrtf( 1.0f + a(0,0) - a(1,1) - a(2,2));
-            q[0] = (a(2,1) - a(1,2) ) / s;
+            float s = 2.0f * sqrtf(1.0f + a(0, 0) - a(1, 1) - a(2, 2));
+            q[0] = (a(2, 1) - a(1, 2)) / s;
             q[1] = 0.25f * s;
-            q[2] = (a(0,1) + a(1,0) ) / s;
-            q[3] = (a(0,2) + a(2,0) ) / s;
+            q[2] = (a(0, 1) + a(1, 0)) / s;
+            q[3] = (a(0, 2) + a(2, 0)) / s;
         }
-        else if (a(1,1) > a(2,2)) {
+        else if (a(1, 1) > a(2, 2))
+        {
             //std::cout<<"Condition 3\n";
-            float s = 2.0f * sqrtf( 1.0f + a(1,1) - a(0,0) - a(2,2));
-            q[0] = (a(0,2) - a(2,0) ) / s;
-            q[1] = (a(0,1) + a(1,0) ) / s;
+            float s = 2.0f * sqrtf(1.0f + a(1, 1) - a(0, 0) - a(2, 2));
+            q[0] = (a(0, 2) - a(2, 0)) / s;
+            q[1] = (a(0, 1) + a(1, 0)) / s;
             q[2] = 0.25f * s;
-            q[3] = (a(1,2) + a(2,1) ) / s;
+            q[3] = (a(1, 2) + a(2, 1)) / s;
         }
-        else {
+        else
+        {
             //std::cout<<"Condition 4\n";
-            float s = 2.0f * sqrtf( 1.0f + a(2,2) - a(0,0) - a(1,1) );
-            q[0] = (a(1,0) - a(0,1) ) / s;
-            q[1] = (a(0,2) + a(2,0) ) / s;
-            q[2] = (a(1,2) + a(2,1) ) / s;
+            float s = 2.0f * sqrtf(1.0f + a(2, 2) - a(0, 0) - a(1, 1));
+            q[0] = (a(1, 0) - a(0, 1)) / s;
+            q[1] = (a(0, 2) + a(2, 0)) / s;
+            q[2] = (a(1, 2) + a(2, 1)) / s;
             q[3] = 0.25f * s;
         }
     }
 
-    if(q[0]<0)
-        q=-1.0*q;
+    if (q[0] < 0)
+        q = -1.0 * q;
 
     return q;
-
 }
 
-inline void QUAT2DCM_float(const arma::rowvec& q, cv::Mat & R) {
+inline void QUAT2DCM_float(const arma::rowvec &q, cv::Mat &R)
+{
 
     double x, y, z, r;
     x = q[1];
@@ -643,19 +815,19 @@ inline void QUAT2DCM_float(const arma::rowvec& q, cv::Mat & R) {
     z = q[3];
     r = q[0];
 
-    R.at<float>(0,0) = r*r+x*x-y*y-z*z;
-    R.at<float>(0,1) = 2.0*(x*y -r*z);
-    R.at<float>(0,2) = 2.0*(z*x+r*y);
+    R.at<float>(0, 0) = r * r + x * x - y * y - z * z;
+    R.at<float>(0, 1) = 2.0 * (x * y - r * z);
+    R.at<float>(0, 2) = 2.0 * (z * x + r * y);
     //
-    R.at<float>(1,0) = 2.0*(x*y+r*z);
-    R.at<float>(1,1) = r*r-x*x+y*y-z*z;
-    R.at<float>(1,2) = 2.0*(y*z-r*x);
+    R.at<float>(1, 0) = 2.0 * (x * y + r * z);
+    R.at<float>(1, 1) = r * r - x * x + y * y - z * z;
+    R.at<float>(1, 2) = 2.0 * (y * z - r * x);
     //
-    R.at<float>(2,0) = 2.0*(z*x-r*y);
-    R.at<float>(2,1) = 2.0*(y*z+r*x);
-    R.at<float>(2,2) = r*r-x*x-y*y+z*z;
+    R.at<float>(2, 0) = 2.0 * (z * x - r * y);
+    R.at<float>(2, 1) = 2.0 * (y * z + r * x);
+    R.at<float>(2, 2) = r * r - x * x - y * y + z * z;
 
-    return ;
+    return;
 }
 
 // ==================================================================================
@@ -663,69 +835,75 @@ inline void QUAT2DCM_float(const arma::rowvec& q, cv::Mat & R) {
 // Calculates rotation matrix to euler angles
 // The result is the same as MATLAB except the order
 // of the euler angles ( x and z are swapped ).
-inline arma::mat rotationMatrixToEulerAngles(const cv::Mat& R) {
+inline arma::mat rotationMatrixToEulerAngles(const cv::Mat &R)
+{
 
-    float sy = sqrt(R.at<float>(0,0) * R.at<float>(0,0) +  R.at<float>(1,0) * R.at<float>(1,0) );
+    float sy = sqrt(R.at<float>(0, 0) * R.at<float>(0, 0) + R.at<float>(1, 0) * R.at<float>(1, 0));
     bool singular = sy < 1e-6; // If
 
     arma::mat omega = arma::zeros<arma::mat>(3, 1);
-    if (!singular) {
-        omega(0,0) = std::atan2(R.at<float>(2,1) , R.at<float>(2,2));
-        omega(1,0) = std::atan2(-R.at<float>(2,0), sy);
-        omega(2,0) = std::atan2(R.at<float>(1,0), R.at<float>(0,0));
+    if (!singular)
+    {
+        omega(0, 0) = std::atan2(R.at<float>(2, 1), R.at<float>(2, 2));
+        omega(1, 0) = std::atan2(-R.at<float>(2, 0), sy);
+        omega(2, 0) = std::atan2(R.at<float>(1, 0), R.at<float>(0, 0));
     }
-    else {
-        omega(0,0) = std::atan2(-R.at<float>(1,2), R.at<float>(1,1));
-        omega(1,0) = std::atan2(-R.at<float>(2,0), sy);
-        omega(2,0) = 0 ;
+    else
+    {
+        omega(0, 0) = std::atan2(-R.at<float>(1, 2), R.at<float>(1, 1));
+        omega(1, 0) = std::atan2(-R.at<float>(2, 0), sy);
+        omega(2, 0) = 0;
     }
 
     return omega;
 }
 
-inline arma::rowvec get_angular_velocity_with_H(const cv::Mat& Hrel){
+inline arma::rowvec get_angular_velocity_with_H(const cv::Mat &Hrel)
+{
 
-    cv::Mat Rrel = Hrel(cv::Range(0,3), cv::Range(0,3));
+    cv::Mat Rrel = Hrel(cv::Range(0, 3), cv::Range(0, 3));
     cv::Mat Omega_x = Rrel;
     Omega_x = (Omega_x - Omega_x.t());
 
     arma::rowvec omega = arma::zeros<arma::rowvec>(3);
-    omega[0] = 0.5 * Omega_x.at<float>(2,1);
-    omega[1] = 0.5 * Omega_x.at<float>(0,2);
-    omega[2] = 0.5 * Omega_x.at<float>(1,0);
+    omega[0] = 0.5 * Omega_x.at<float>(2, 1);
+    omega[1] = 0.5 * Omega_x.at<float>(0, 2);
+    omega[2] = 0.5 * Omega_x.at<float>(1, 0);
 
     return omega;
-
 }
 
-inline arma::mat get_angular_velocity_with_R(const cv::Mat& Rprev, const cv::Mat& Rcur){
+inline arma::mat get_angular_velocity_with_R(const cv::Mat &Rprev, const cv::Mat &Rcur)
+{
 
     cv::Mat Omega_x = (Rcur - Rprev) * Rprev.t();
     Omega_x = (Omega_x - Omega_x.t());
 
     arma::mat omega = arma::zeros<arma::mat>(3, 1);
-    omega(0,0) = 0.5 * Omega_x.at<double>(2,1);
-    omega(1,0) = 0.5 * Omega_x.at<double>(0,2);
-    omega(2,0) = 0.5 * Omega_x.at<double>(1,0);
+    omega(0, 0) = 0.5 * Omega_x.at<double>(2, 1);
+    omega(1, 0) = 0.5 * Omega_x.at<double>(0, 2);
+    omega(2, 0) = 0.5 * Omega_x.at<double>(1, 0);
 
     return omega;
-
 }
 
-inline double logDet(arma::mat M) {
+inline double logDet(arma::mat M)
+{
 
 #ifndef ARMA_NO_DEBUG
     assert(M.rows == M.cols);
 #endif
 
     arma::mat R;
-    if (arma::chol(R, M, "lower") == true) {
+    if (arma::chol(R, M, "lower") == true)
+    {
         //        arma::vec dv = R.diag();
         //        double min_dv = arma::min(dv);
         //        return 2 * std::log( arma::prod( dv ) / min_dv );
-        return 2 * std::log( arma::prod( R.diag() ) );
+        return 2 * std::log(arma::prod(R.diag()));
     }
-    else {
+    else
+    {
         //        arma::vec dv;
         //        arma::eig_sym( dv, M );
         //        double min_dv = arma::min(dv);
@@ -742,7 +920,8 @@ inline double logDet(arma::mat M) {
 // Suppose to solve the maximum singular value & vector only,
 // when the inital vector is sharing component with maximum singular vector
 //
-inline void solveMaxSVD(const arma::mat & SOM, arma::colvec & u, double & s, arma::rowvec & v) {
+inline void solveMaxSVD(const arma::mat &SOM, arma::colvec &u, double &s, arma::rowvec &v)
+{
     //
     double s0 = 0.0, tol = 1.e-5; // 1.e-12;
     v = arma::sum(arma::abs(SOM), 0);
@@ -753,7 +932,7 @@ inline void solveMaxSVD(const arma::mat & SOM, arma::colvec & u, double & s, arm
     {
         u.zeros(SOM.n_rows, 1);
         v.zeros(1, SOM.n_cols);
-        return ;
+        return;
     }
 
     // set initial singular vector
@@ -761,14 +940,14 @@ inline void solveMaxSVD(const arma::mat & SOM, arma::colvec & u, double & s, arm
 
     // iterative sol
     int cnt = 0;
-    while ( std::fabs(s-s0) > tol * s )
+    while (std::fabs(s - s0) > tol * s)
     {
-        if ( cnt >= N_MAX_ITER_SVD )
+        if (cnt >= N_MAX_ITER_SVD)
         {
             //#ifdef OBS_DEBUG_VERBOSE
             //                        std::cout << "func solveMaxSVD: no convergence after " << cnt << " iterations" << std::endl;
             //#endif
-            return ;
+            return;
         }
         //
         s0 = s;
@@ -787,9 +966,8 @@ inline void solveMaxSVD(const arma::mat & SOM, arma::colvec & u, double & s, arm
     //#endif
 }
 
-
-
-inline void compute_F_subblock(const arma::rowvec & Xv, const double & dt, arma::mat & F_Q, arma::mat & F_Omg) {
+inline void compute_F_subblock(const arma::rowvec &Xv, const double &dt, arma::mat &F_Q, arma::mat &F_Omg)
+{
     //-----------------------------------------------------------------------------
     // Compute F
     //std::cout << "[OBS_COMPUTOR]  Get F" << std::endl;
@@ -800,18 +978,21 @@ inline void compute_F_subblock(const arma::rowvec & Xv, const double & dt, arma:
     arma::rowvec q;
     //    cout << "v = " << v << endl;
 
-    if(theta < 1e-6) {
+    if (theta < 1e-6)
+    {
         //        q << 1 << 0 << 0 << 0 << arma::endr;
         q = {1, 0, 0, 0};
-    } else {
+    }
+    else
+    {
         arma::rowvec v_n = v / theta;
         //        cout << "v_n = " << v_n << endl;
 
-        arma::rowvec v_n_reshape =  std::sin(theta / 2.0) * (v_n / arma::norm(v_n, 2));
+        arma::rowvec v_n_reshape = std::sin(theta / 2.0) * (v_n / arma::norm(v_n, 2));
         //        cout << "v_n_reshape = " << v_n_reshape << endl;
 
         //        q << std::cos(theta / 2.0) << v_n_reshape(0,0) << v_n_reshape(0,1) << v_n_reshape(0,2);
-        q = { std::cos(theta / 2.0), v_n_reshape[0], v_n_reshape[1], v_n_reshape[2] };
+        q = {std::cos(theta / 2.0), v_n_reshape[0], v_n_reshape[1], v_n_reshape[2]};
     }
 
     //    cout << "q = " << q << endl;
@@ -822,18 +1003,18 @@ inline void compute_F_subblock(const arma::rowvec & Xv, const double & dt, arma:
     //         << X << R  <<  Z << -Y << arma::endr
     //         << Y << -Z <<  R <<  X << arma::endr
     //         << Z <<  Y << -X <<  R << arma::endr;
-    F_Q = { {R, -X, -Y, -Z}, {X, R, Z, -Y}, {Y, -Z, R, X}, {Z, Y, -X, R} };
+    F_Q = {{R, -X, -Y, -Z}, {X, R, Z, -Y}, {Y, -Z, R, X}, {Z, Y, -X, R}};
 
     //    cout << "F_Q = " << F_Q << endl;
 
     // F matrix subblock:   F_Omg
     R = qOld[0], X = qOld[1], Y = qOld[2], Z = qOld[3];
-    arma::mat  dq3_by_dq1;
+    arma::mat dq3_by_dq1;
     //    dq3_by_dq1 << R << -X << -Y << -Z << arma::endr
     //               << X <<  R << -Z <<  Y << arma::endr
     //               << Y <<  Z <<  R << -X << arma::endr
     //               << Z << -Y <<  X <<  R << arma::endr;
-    dq3_by_dq1 = { {R, -X, -Y, -Z}, {X, R, -Z, Y}, {Y, Z, R, -X}, {Z, -Y, X, R} };
+    dq3_by_dq1 = {{R, -X, -Y, -Z}, {X, R, -Z, Y}, {Y, Z, R, -X}, {Z, -Y, X, R}};
 
     //    cout << "dq3_by_dq1 = " << dq3_by_dq1 << endl;
     //    cout << "omegaOld = " << omegaOld << endl;
@@ -885,7 +1066,8 @@ inline void compute_F_subblock(const arma::rowvec & Xv, const double & dt, arma:
     return;
 }
 
-inline void convert_PWLS_Vec_To_Homo(const arma::rowvec & pwlsVec, cv::Mat & Tcw) {
+inline void convert_PWLS_Vec_To_Homo(const arma::rowvec &pwlsVec, cv::Mat &Tcw)
+{
 
     cv::Mat Rwc(3, 3, CV_32F);
     cv::Mat twc(3, 1, CV_32F);
@@ -903,15 +1085,16 @@ inline void convert_PWLS_Vec_To_Homo(const arma::rowvec & pwlsVec, cv::Mat & Tcw
 
     //
     Tcw = cv::Mat::eye(4, 4, CV_32F);
-    Tcw.rowRange(0,3).colRange(0,3) = Rwc.t();
-    Tcw.rowRange(0,3).col(3) = -Rwc.t() * twc;
+    Tcw.rowRange(0, 3).colRange(0, 3) = Rwc.t();
+    Tcw.rowRange(0, 3).col(3) = -Rwc.t() * twc;
 
     //    std::cout << "func convert_PWLS_Vec_To_Homo: Tcw = " << Tcw << std::endl;
 }
 
-inline void convert_Homo_Pair_To_PWLS_Vec(const double t_0, const cv::Mat& Tcw_0,
-                                          const double t_1, const cv::Mat& Twc_1,
-                                          arma::rowvec & pwlsVec) {
+inline void convert_Homo_Pair_To_PWLS_Vec(const double t_0, const cv::Mat &Tcw_0,
+                                          const double t_1, const cv::Mat &Twc_1,
+                                          arma::rowvec &pwlsVec)
+{
     //
     pwlsVec = arma::zeros<arma::rowvec>(13);
 
@@ -921,7 +1104,7 @@ inline void convert_Homo_Pair_To_PWLS_Vec(const double t_0, const cv::Mat& Tcw_0
     pwlsVec[1] = Twc_1.at<float>(1, 3);
     pwlsVec[2] = Twc_1.at<float>(2, 3);
     // quaternion
-    pwlsVec.subvec(3, 6) = DCM2QUAT_float(Twc_1.rowRange(0,3).colRange(0,3));
+    pwlsVec.subvec(3, 6) = DCM2QUAT_float(Twc_1.rowRange(0, 3).colRange(0, 3));
 
     // fill in the velocity info with Tcw_prev * Twc_cur
     //
@@ -957,20 +1140,21 @@ inline void convert_Homo_Pair_To_PWLS_Vec(const double t_0, const cv::Mat& Tcw_0
     //              << std::endl;
 }
 
-inline void assemble_F_matrix(const double dt, const arma::mat & F_Q, const arma::mat & F_Omg,
-                              arma::mat & F) {
+inline void assemble_F_matrix(const double dt, const arma::mat &F_Q, const arma::mat &F_Omg,
+                              arma::mat &F)
+{
 
     F = arma::eye(13, 13);
     F.at(0, 7) = dt;
     F.at(1, 8) = dt;
     F.at(2, 9) = dt;
-    F.submat(arma::span(3, 6), arma::span(3, 6))   = F_Q;
+    F.submat(arma::span(3, 6), arma::span(3, 6)) = F_Q;
     F.submat(arma::span(3, 6), arma::span(10, 12)) = F_Omg;
-
 }
 
-inline void propagate_PWLS(const KineStruct & curState,
-                           arma::rowvec & nextPWLSVec) {
+inline void propagate_PWLS(const KineStruct &curState,
+                           arma::rowvec &nextPWLSVec)
+{
 
     //    std::cout << "start PWLS propagation" << std::endl;
     //    std::cout << "s1. " << curState.Xv << std::endl;
@@ -989,12 +1173,12 @@ inline void propagate_PWLS(const KineStruct & curState,
     //
     arma::rowvec qCur = curState.Xv.subvec(3, 6);
     arma::rowvec wCur = curState.Xv.subvec(10, 12);
-    arma::rowvec qMove = v2q( wCur * curState.dt );
-    arma::rowvec qPred = qProd( qCur, qMove);
+    arma::rowvec qMove = v2q(wCur * curState.dt);
+    arma::rowvec qPred = qProd(qCur, qMove);
 
     //        std::cout << qPred << std::endl;
 
-    arma::rowvec qn = qNormalize( qPred );
+    arma::rowvec qn = qNormalize(qPred);
 
     //        std::cout << qn << std::endl;
 
@@ -1005,34 +1189,139 @@ inline void propagate_PWLS(const KineStruct & curState,
     nextPWLSVec[6] = qn[3];
 
     //    std::cout << "s3. "  << nextPWLSVec << std::endl;
-
 }
 
-
-inline void compute_Huber_loss (const float residual_, float & loss_) {
+inline void compute_Huber_loss(const float residual_, float &loss_)
+{
 
     float delta_ = sqrt(5.991);
 
-    if (fabs(residual_) < delta_) {
+    if (fabs(residual_) < delta_)
+    {
         loss_ = pow(residual_, 2);
     }
-    else {
+    else
+    {
         loss_ = 2 * delta_ * fabs(residual_) - pow(delta_, 2);
     }
-    return ;
+    return;
 }
 
-inline void compute_Huber_weight (const float residual_, float & weight_) {
-    if (fabs(residual_) > 0.001) {
+inline void compute_Huber_weight(const float residual_, float &weight_)
+{
+    if (fabs(residual_) > 0.001)
+    {
         float loss_;
         compute_Huber_loss(residual_, loss_);
-        weight_ = sqrt( loss_ ) / residual_;
+        weight_ = sqrt(loss_) / residual_;
     }
     else
         weight_ = 1.0;
-    return ;
+    return;
 }
 
+
+//=============================================================================
+// _root3, root3 from http://prografix.narod.ru
+//=============================================================================
+inline double _root3 ( double x )
+{
+    double s = 1.;
+    while ( x < 1. )
+    {
+        x *= 8.;
+        s *= 0.5;
+    }
+    while ( x > 8. )
+    {
+        x *= 0.125;
+        s *= 2.;
+    }
+    double r = 1.5;
+    r -= 1./3. * ( r - x / ( r * r ) );
+    r -= 1./3. * ( r - x / ( r * r ) );
+    r -= 1./3. * ( r - x / ( r * r ) );
+    r -= 1./3. * ( r - x / ( r * r ) );
+    r -= 1./3. * ( r - x / ( r * r ) );
+    r -= 1./3. * ( r - x / ( r * r ) );
+    return r * s;
 }
+
+inline double root3 ( double x )
+{
+    if ( x > 0 ) return _root3 ( x ); else
+        if ( x < 0 ) return -_root3 (- x ); else
+            return 0.;
+}
+
+// x - array of size 2
+// return 2: 2 real roots x[0], x[1]
+// return 0: pair of complex roots: x[0]±i*x[1]
+inline int SolveQuadraticEquation(double & a, double & b,
+                                  std::vector<double> & x)
+{	// solve equation x^2 + a*x + b = 0
+    x.clear();
+    double D = 0.25*a*a - b;
+    if (D >= 0) {
+        D = sqrt(D);
+        x.push_back( -0.5*a + D );
+        x.push_back( -0.5*a - D );
+        return 2;
+    }
+    x.push_back( -0.5*a );
+    x.push_back( sqrt(-D) );
+    return 0;
+}
+
+//---------------------------------------------------------------------------
+// x - array of size 3
+// In case 3 real roots: => x[0], x[1], x[2], return 3
+//         2 real roots: x[0], x[1],          return 2
+//         1 real root : x[0], x[1] ± i*x[2], return 1
+inline int SolveCubicEquation(double & a, double & b, double & c,
+                              std::vector<double> & x)
+{
+    // solve cubic equation x^3 + a*x^2 + b*x + c = 0
+    x.clear();
+    double a2 = a*a;
+    double q  = (a2 - 3*b)/9;
+    double r  = (a*(2*a2-9*b) + 27*c)/54;
+    // equation x^3 + q*x + r = 0
+    double r2 = r*r;
+    double q3 = q*q*q;
+    double A, B;
+    if (r2 <= (q3 + DBL_MIN)) {//<<-- FIXED!
+        double t=r/sqrt(q3);
+        if( t<-1)
+            t=-1;
+        if( t> 1)
+            t= 1;
+        t=acos(t);
+        a/=3;
+        q=-2*sqrt(q);
+        x.push_back(q*cos(t/3)-a);
+        x.push_back(q*cos((t+6.28318530717958648)/3)-a);
+        x.push_back(q*cos((t-6.28318530717958648)/3)-a);
+        return(3);
+    } else {
+        //A =-pow(fabs(r)+sqrt(r2-q3),1./3);
+        A =-root3(fabs(r)+sqrt(r2-q3));
+        if( r<0 )
+            A=-A;
+        B = (A==0? 0 : B=q/A);
+        a/=3;
+        x.push_back((A+B)-a);
+        x.push_back(-0.5*(A+B)-a);
+        x.push_back(0.5*sqrt(3.)*(A-B));
+        if(fabs(x[2])<DBL_MIN) {
+            x[2]=x[1];
+            return(2);
+        }
+        return(1);
+    }
+}// SolveP3(double *x,double a,double b,double c) {
+
+
+} // namespace ORB_SLAM2
 
 #endif

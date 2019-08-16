@@ -5,10 +5,23 @@ IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
 ENDIF()
 
+IF(NOT DBOW2_LIB_TYPE)
+  SET(DBOW2_LIB_TYPE "STATIC") # "SHARED"
+ENDIF(NOT DBOW2_LIB_TYPE)
+
 MESSAGE(STATUS "BUILD TYPE:" ${CMAKE_BUILD_TYPE})
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall  -O3 -march=native ")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall  -O3 -march=native")
+# Check architecture
+IF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+    add_definitions("-DENABLE_SSE")
+    MESSAGE("SSE flags: " ${SSE_FLAGS})
+    # Optimized for Jetson TX2 only; refer to https://devtalk.nvidia.com/default/topic/1028179/jetson-tx2/gcc-options-for-tx2
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}     -Wall -O3 -ffast-math -flto -march=armv8-a+crypto -mcpu=cortex-a57+crypto")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O3 -ffast-math -flto -march=armv8-a+crypto -mcpu=cortex-a57+crypto")
+ELSE()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}     -Wall -O3 -march=native ")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O3 -march=native")
+ENDIF()
 
 set(HDRS_DBOW2
   DBoW2/BowVector.h
@@ -31,20 +44,20 @@ set(SRCS_DUTILS
   DUtils/Timestamp.cpp)
 
 # customize opencv dir
- if ($ENV{ROS_DISTRO} STREQUAL "indigo")
-     set( OpenCV_DIR /opt/opencv2/share/OpenCV )
-     find_package(OpenCV 2.4.13 REQUIRED core ocl)
- elseif ($ENV{ROS_DISTRO} STREQUAL "kinetic")
-     # set( OpenCV_DIR /opt/opencv-3.4.1/share/OpenCV )
-     set( OpenCV_DIR /opt/opencv3/share/OpenCV )
-     find_package(OpenCV 3.4.0 REQUIRED)
- endif()
-# set( OpenCV_DIR /opt/opencv3/share/OpenCV )
-# find_package(OpenCV 3.4.0 REQUIRED)
+# if ($ENV{ROS_DISTRO} STREQUAL "indigo")
+#     set( OpenCV_DIR /opt/opencv2/share/OpenCV )
+#     find_package(OpenCV 2.4.13 REQUIRED core ocl)
+# elseif ($ENV{ROS_DISTRO} STREQUAL "kinetic")
+#     set( OpenCV_DIR /opt/opencv3/share/OpenCV )
+#     find_package(OpenCV 3.4.0 REQUIRED)
+# endif()
+find_package(OpenCV 3.4.1 REQUIRED
+                 PATHS /opt/opencv3
+                 NO_DEFAULT_PATH)
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 include_directories(${OpenCV_INCLUDE_DIRS})
-add_library(DBoW2 SHARED ${SRCS_DBOW2} ${SRCS_DUTILS})
+add_library(DBoW2 ${DBOW2_LIB_TYPE} ${SRCS_DBOW2} ${SRCS_DUTILS})
 target_link_libraries(DBoW2 ${OpenCV_LIBS})
 

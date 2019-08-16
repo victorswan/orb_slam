@@ -1,34 +1,9 @@
-echo "Configuring and building Thirdparty/DBoW2 ..."
-
-cd Thirdparty/DBoW2
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release # -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF
-make -j
-
-cd ../../g2o
-
-echo "Configuring and building Thirdparty/g2o ..."
+echo "Configuring and building GF-ORB_SLAM2 ..."
 
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j
-
-cd ../../../
-
-# echo "Uncompress vocabulary ..."
-
-# cd Vocabulary
-# tar -xf ORBvoc.txt.tar.gz
-# cd ..
-
-echo "Configuring and building ORB_SLAM2 ..."
-
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release # -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF
-make -j
+cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_CUDA_IN_OPENCV=False -DORB_LIB_TYPE:STRING="STATIC" # "SHARED" # 
+make -j4
 
 # cd ..
 # echo "Converting vocabulary to binary"

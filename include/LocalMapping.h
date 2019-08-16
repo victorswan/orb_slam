@@ -26,9 +26,13 @@
 #include "LoopClosing.h"
 #include "Tracking.h"
 #include "KeyFrameDatabase.h"
+#include "Util.hpp"
 
 #include <mutex>
 
+// #define LOGGING_KF_LIST
+
+#define LOCAL_BA_TIME_LOGGING
 
 namespace ORB_SLAM2
 {
@@ -37,19 +41,35 @@ class Tracking;
 class LoopClosing;
 class Map;
 
+struct BudgetPredictParam {
+    double budget_per_frame;
+    double coe_a, coe_b, coe_c, coe_d;
+    //
+    std::vector<double> match_ratio_log;
+    size_t              match_ratio_idx;
+    //
+    double              avg_match_num;
+//    double              visible_mpt_num;
+};
+
 class LocalMapping
 {
 public:
-    LocalMapping(Map* pMap, const float bMonocular);
+    LocalMapping(Map *pMap, const float bMonocular);
 
-    void SetLoopCloser(LoopClosing* pLoopCloser);
+    ~LocalMapping()
+    {
+        f_realTimeBA.close();
+    }
 
-    void SetTracker(Tracking* pTracker);
+    void SetLoopCloser(LoopClosing *pLoopCloser);
+
+    void SetTracker(Tracking *pTracker);
 
     // Main function
     void Run();
 
-    void InsertKeyFrame(KeyFrame* pKF);
+    void InsertKeyFrame(KeyFrame *pKF);
 
     // Thread Synch
     void RequestStop();
@@ -67,10 +87,30 @@ public:
     void RequestFinish();
     bool isFinished();
 
-    int KeyframesInQueue(){
+    int KeyframesInQueue()
+    {
         unique_lock<std::mutex> lock(mMutexNewKFs);
         return mlNewKeyFrames.size();
     }
+
+#ifdef LOGGING_KF_LIST
+    void SetRealTimeFileStream(string fNameRealTimeBA);
+#endif
+
+    // Time log
+    std::vector<MappingLog> mvBATimeLog;
+    MappingLog logCurrentKeyFrame;
+
+#ifdef ENABLE_ANTICIPATION_IN_BUDGET
+    // Historical data for online budget estimation
+    //    std::queue<std::pair<double, double>> mqBudgetHistory;
+//    Eigen::Matrix<double, NUM_HISTORICAL_BUDGET, 4> mKFNumMat;
+//    Eigen::Matrix<double, NUM_HISTORICAL_BUDGET, 1> mBudgetMat;
+    size_t mRunningRow;
+    bool   mbFullyLoaded;
+#endif
+    //
+    BudgetPredictParam mParam;
 
 protected:
 
@@ -83,7 +123,7 @@ protected:
 
     void KeyFrameCulling();
 
-    cv::Mat ComputeF12(KeyFrame* &pKF1, KeyFrame* &pKF2);
+    cv::Mat ComputeF12(KeyFrame *&pKF1, KeyFrame *&pKF2);
 
     cv::Mat SkewSymmetricMatrix(const cv::Mat &v);
 
@@ -99,16 +139,25 @@ protected:
     bool mbFinished;
     std::mutex mMutexFinish;
 
-    Map* mpMap;
+#ifdef LOGGING_KF_LIST
+    vector<size_t> mvKeyFrameList;
+    vector<size_t> mvFixedFrameList;
+#endif
 
-    LoopClosing* mpLoopCloser;
-    Tracking* mpTracker;
+    arma::wall_clock timer;
 
-    std::list<KeyFrame*> mlNewKeyFrames;
+    std::ofstream f_realTimeBA;
 
-    KeyFrame* mpCurrentKeyFrame;
+    Map *mpMap;
 
-    std::list<MapPoint*> mlpRecentAddedMapPoints;
+    LoopClosing *mpLoopCloser;
+    Tracking *mpTracker;
+
+    std::list<KeyFrame *> mlNewKeyFrames;
+
+    KeyFrame *mpCurrentKeyFrame;
+
+    std::list<MapPoint *> mlpRecentAddedMapPoints;
 
     std::mutex mMutexNewKFs;
 
@@ -123,6 +172,6 @@ protected:
     std::mutex mMutexAccept;
 };
 
-} //namespace ORB_SLAM
+} // namespace ORB_SLAM2
 
 #endif // LOCALMAPPING_H
