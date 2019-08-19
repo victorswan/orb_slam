@@ -25,9 +25,9 @@ As the central part of autonomous navigation stack developed at Georgia Tech IVA
 
 ## Build & Run
 
-To build GF-ORB-SLAM2, first clone the repo to your catkin workspace
+To build GF-ORB-SLAM2, first clone the repo
 
-    cd ~/catkin_ws/src && git clone https://github.com/ivalab/gf_orb_slam2.git && git checkout catkin
+    git clone https://github.com/ivalab/gf_orb_slam2.git && git checkout master
 
 Then build dependencies (by default we assume a GPU is available for opencv; otherwise use the non-gpu build cmd in build_dep.sh accordingly)
 
@@ -35,13 +35,7 @@ Then build dependencies (by default we assume a GPU is available for opencv; oth
 
 Now build the GF-ORB-SLAM2 package with GPU
 
-    catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG -march=native" -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG -march=native"
-    catkin build --this
-
-or without GPU:
-
-    catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG -march=native" -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG -march=native"
-    catkin build --this -DENABLE_CUDA_IN_OPENCV=False
+    ./build.sh
 
 We recommend converting the ORB vocabulary to binary format, by calling
 
@@ -51,11 +45,9 @@ To run GF-ORB-SLAM2 on public benchmarks, please refer to batch evaluation scrip
 
     batch_script
 
-or follow the example calls at **rosrun_cmd.md** for your own sensor / sequence. 
+Similar to original ORB-SLAM2, the camera parameters shall be provided in yaml format.  Some example configurations for public benchmarks are available by cloning the following repo and place it at the same dir as GF-ORB-SLAM2
 
-Similar to original ORB-SLAM2, the camera parameters shall be provided in yaml format.  Some example configurations for public benchmarks are available by cloning the following repo and place it at the same catkin workspace as GF-ORB-SLAM2
-
-    cd ~/catkin_ws/src && git clone https://github.com/ivalab/ORB_Data.git
+    git clone https://github.com/ivalab/ORB_Data.git
 
 ## References
 
