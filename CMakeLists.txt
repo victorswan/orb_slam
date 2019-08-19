@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(GF_ORB_SLAM2)
 
-message("ROS version = " $ENV{ROS_DISTRO})
+# message("ROS version = " $ENV{ROS_DISTRO})
 
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
