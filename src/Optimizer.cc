@@ -1632,7 +1632,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap
 
             if (pKFi->mnBALocalForKF != pKF->mnId && pKFi->mnBAFixedForKF != pKF->mnId)
             {
-#if defined ENABLE_SLIDING_WINDOW_FILTER && defined ENABLE_COVIS_GRAPH
+#if defined ENABLE_SLIDING_WINDOW_FILTER || defined ENABLE_COVIS_GRAPH
                 if (pKFi->mnBALocalCount >= GOOD_GRAPH_FIXED_THRES)
                 {
 #endif
@@ -1640,7 +1640,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap
                 if (!pKFi->isBad()) {
                     lFixedCameras.push_back(pKFi);
                 }
-#if defined ENABLE_SLIDING_WINDOW_FILTER && defined ENABLE_COVIS_GRAPH
+#if defined ENABLE_SLIDING_WINDOW_FILTER || defined ENABLE_COVIS_GRAPH
                 }
 #endif
             }
