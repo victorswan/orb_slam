@@ -896,10 +896,10 @@ int Observability::runActiveMapMatching(Frame *pFrame,
     //              << " lmks from " << N << " visible map points!" << std::endl;
 
     // define the size of random subset
-    //    double errorBound = 0.001; // 0.005; // 0.01; // 0.0005; //
-    //    size_t szLazierSubset = static_cast<size_t>( 6.0 );
-    size_t szLazierSubset = static_cast<size_t>( float(N) / float(num_to_match) * 1.0 );
-    // size_t szLazierSubset = static_cast<size_t>( float(N) / float(num_to_match) * 2.3 );
+    // in practice, multiplication factor 1.0 works better on many sequences
+    // size_t szLazierSubset = static_cast<size_t>( float(N) / float(num_to_match) * 1.0 );
+    // in theory, multiplication factor 2.3 is equivalant to decay factor of 0.1
+    size_t szLazierSubset = static_cast<size_t>( float(N) / float(num_to_match) * 2.3 );
 
     int nMatched = 0;
     //
