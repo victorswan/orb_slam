@@ -1,3 +1,6 @@
+dir=`pwd`
+echo $dir
+
 echo "Configuring and building Thirdparty/DBoW2 ..."
 
 cd Thirdparty/DBoW2
@@ -35,3 +38,5 @@ cd ../../../
 # cd ../gf_orb_slam2
 # echo "Converting vocabulary to binary"
 # ./tools/bin_vocabulary
+
+cd $dir

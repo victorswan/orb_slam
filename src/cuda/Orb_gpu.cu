@@ -101,16 +101,41 @@ namespace ORB_SLAM2 { namespace cuda {
 
 #undef GET_VALUE
 
-  GpuOrb::GpuOrb(int maxKeypoints) : maxKeypoints(maxKeypoints), descriptors(maxKeypoints, 32, CV_8UC1) {
-    checkCudaErrors( cudaStreamCreate(&stream) );
-    cvStream = StreamAccessor::wrapStream(stream);
-    checkCudaErrors( cudaMalloc(&keypoints, sizeof(KeyPoint) * maxKeypoints) );
+  GpuOrb::GpuOrb()
+  {
+
   }
 
   GpuOrb::~GpuOrb() {
-    cvStream.~Stream();
-    checkCudaErrors( cudaFree(keypoints) );
-    checkCudaErrors( cudaStreamDestroy(stream) );
+      if(keypoints != nullptr)
+      {
+          cvStream.~Stream();
+          checkCudaErrors( cudaFree(keypoints) );
+          checkCudaErrors( cudaStreamDestroy(stream) );
+      }
+  }
+
+  void GpuOrb::init(int maxKeypoints)
+  {
+      if(this->maxKeypoints == maxKeypoints
+              && keypoints != nullptr)
+      {
+          return;
+      }
+
+      this->maxKeypoints = maxKeypoints;
+      descriptors = GpuMat(maxKeypoints, 32, CV_8UC1);
+
+      if(keypoints != nullptr)
+      {
+          cvStream.~Stream();
+          checkCudaErrors( cudaFree(keypoints) );
+          checkCudaErrors( cudaStreamDestroy(stream) );
+      }
+
+      checkCudaErrors( cudaStreamCreate(&stream) );
+      cvStream = StreamAccessor::wrapStream(stream);
+      checkCudaErrors( cudaMalloc(&keypoints, sizeof(KeyPoint) * maxKeypoints) );
   }
 
   void GpuOrb::launch_async(InputArray _image, const KeyPoint * _keypoints, const int npoints) {

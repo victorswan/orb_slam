@@ -238,9 +238,14 @@ vector<KeyFrame *> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
     int maxCommonWords = 0;
     for (list<KeyFrame *>::iterator lit = lKFsSharingWords.begin(), lend = lKFsSharingWords.end(); lit != lend; lit++)
     {
+        cout << "(*lit)->mnId = "<< (*lit)->mnId << endl;
+        cout << "(*lit)->mnRelocWords = "<< (*lit)->mnRelocWords << endl;
+
         if ((*lit)->mnRelocWords > maxCommonWords)
             maxCommonWords = (*lit)->mnRelocWords;
     }
+
+    cout << "maxCommonWords = "<< maxCommonWords << endl;
 
     int minCommonWords = maxCommonWords * 0.8f;
 
@@ -253,10 +258,14 @@ vector<KeyFrame *> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
     {
         KeyFrame *pKFi = *lit;
 
+        cout << "pKFi->mnId = "<< pKFi->mnId << endl;
+        cout << "pKFi->mnRelocWords = "<< pKFi->mnRelocWords << endl;
+
         if (pKFi->mnRelocWords > minCommonWords)
         {
             nscores++;
             float si = mpVoc->score(F->mBowVec, pKFi->mBowVec);
+            cout << "si = "<< si << endl;
             pKFi->mRelocScore = si;
             lScoreAndMatch.push_back(make_pair(si, pKFi));
         }

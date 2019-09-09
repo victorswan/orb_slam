@@ -31,6 +31,15 @@
 #include <opencv2/core/core.hpp>
 #include <mutex>
 
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/serialization/binary_object.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
+#include <boost/serialization/split_member.hpp>
+
 namespace ORB_SLAM2
 {
 
@@ -44,6 +53,7 @@ public:
     MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map *pMap);
     MapPoint(const cv::Mat &Pos, Map *pMap, Frame *pFrame, const int &idxF);
 
+    MapPoint(Map *pMap);
     MapPoint(cv::FileStorage &fs, Map *pMap);
 
     void ExportToYML(cv::FileStorage &fs);
@@ -100,8 +110,8 @@ public:
     int PredictScale(const float &currentDist, Frame *pF);
 
 public:
-    long unsigned int mnId;
     static long unsigned int nNextId;
+    long unsigned int mnId;    
     long int mnFirstKFid;
     long int mnFirstFrame;
     int nObs;
@@ -157,7 +167,7 @@ protected:
     cv::Mat mWorldPos;
 
     // Keyframes observing the point and associated index in keyframe
-    std::map<KeyFrame *, size_t> mObservations;
+    std::map<KeyFrame *, size_t> mObservations; //#1 need extern setting
 
     // Mean viewing direction
     cv::Mat mNormalVector;
@@ -166,7 +176,7 @@ protected:
     cv::Mat mDescriptor;
 
     // Reference KeyFrame
-    KeyFrame *mpRefKF;
+    KeyFrame *mpRefKF;  //#2 need extern setting
 
     //  // Tracking counters
     //  int mnVisible;
@@ -184,6 +194,184 @@ protected:
 
     std::mutex mMutexPos;
     std::mutex mMutexFeatures;
+
+private:
+    friend class boost::serialization::access;
+
+    template<class Archive>
+    void saveMat(Archive & ar, const cv::Mat &m) const
+    {
+        bool empty_flag = m.empty();
+        ar << empty_flag;
+
+        if(!empty_flag)
+        {
+            size_t elem_size = m.elemSize();
+            int elem_type = m.type();
+
+            ar << m.cols;
+            ar << m.rows;
+            ar << elem_size;
+            ar << elem_type;
+
+            const size_t data_size = m.cols * m.rows * elem_size;
+            ar << boost::serialization::make_array(m.ptr(), data_size);
+        }
+    }
+
+    template<class Archive>
+    void loadMat(Archive & ar, cv::Mat &m)
+    {
+        bool empty_flag;
+        ar >> empty_flag;
+
+        if(!empty_flag)
+        {
+            int cols, rows;
+            size_t elem_size;
+            int elem_type;
+
+            ar >> cols;
+            ar >> rows;
+            ar >> elem_size;
+            ar >> elem_type;
+
+            m.create(rows, cols, elem_type);
+            size_t data_size = m.cols * m.rows * elem_size;
+            ar >> boost::serialization::make_array(m.ptr(), data_size);
+        }
+    }
+
+    template<class Archive, class Type>
+    void saveVector(Archive & ar, const std::vector<Type> & vec) const
+    {
+        int size = vec.size();
+        ar << size;
+
+        std::vector<Type> vec_copy = vec;
+
+        if(size > 0)
+        {
+            ar << boost::serialization::make_binary_object(vec_copy.data(), sizeof(Type) * size);
+        }
+    }
+
+    friend class boost::serialization::access;
+    template<class Archive, class Type>
+    void loadVector(Archive & ar, std::vector<Type> & vec)
+    {
+        int size;
+        ar >> size;
+        vec.resize(size);
+
+        if(size > 0)
+        {
+            ar >> boost::serialization::make_binary_object(vec.data(), sizeof(Type) * size);
+        }
+    }
+
+    template<class Archive>
+    void save(Archive &ar, unsigned int) const
+    {
+        ar << mnId;
+        ar << mnFirstKFid;
+        ar << mnFirstFrame;
+        ar << nObs;
+
+        ar << mTrackProjX;
+        ar << mTrackProjY;
+        ar << mTrackProjXR;
+        ar << mbTrackInView;
+        ar << mnTrackScaleLevel;
+        ar << mTrackViewCos;
+        ar << mnTrackReferenceForFrame;
+        ar << mnLastFrameSeen;
+
+        ar << mnBALocalForKFCand;
+        ar << mnBALocalForKF;
+        ar << mnFuseCandidateForKF;
+
+        ar << mnLoopPointForKF;
+        ar << mnCorrectedByKF;
+        ar << mnCorrectedReference;
+
+        saveMat(ar, mPosGBA);
+
+        ar << mnBAGlobalForKF;
+
+        ar << mnVisible;
+        ar << mnFound;
+
+        saveVector(ar, mvMatchCandidates);
+
+        saveMat(ar, mWorldPos);
+
+        saveMat(ar, mNormalVector);
+        saveMat(ar, mDescriptor);
+
+        ar << mnVisible;
+        ar << mnFound;
+
+        ar << mbBad;
+
+        ar << mfMinDistance;
+        ar << mfMaxDistance;
+    }
+
+    friend class boost::serialization::access;
+    template<class Archive>
+    void load(Archive &ar, unsigned int)
+    {
+        ar >> mnId;
+        ar >> mnFirstKFid;
+        ar >> mnFirstFrame;
+        ar >> nObs;
+
+        ar >> mTrackProjX;
+        ar >> mTrackProjY;
+        ar >> mTrackProjXR;
+        ar >> mbTrackInView;
+        ar >> mnTrackScaleLevel;
+        ar >> mTrackViewCos;
+        ar >> mnTrackReferenceForFrame;
+        ar >> mnLastFrameSeen;
+
+        ar >> mnBALocalForKFCand;
+        ar >> mnBALocalForKF;
+        ar >> mnFuseCandidateForKF;
+
+        ar >> mnLoopPointForKF;
+        ar >> mnCorrectedByKF;
+        ar >> mnCorrectedReference;
+
+        loadMat(ar, mPosGBA);
+
+        ar >> mnBAGlobalForKF;
+
+        ar >> mnVisible;
+        ar >> mnFound;
+
+        loadVector(ar, mvMatchCandidates);
+
+        loadMat(ar, mWorldPos);
+
+        loadMat(ar, mNormalVector);
+        loadMat(ar, mDescriptor);
+
+        ar >> mnVisible;
+        ar >> mnFound;
+
+        ar >> mbBad;
+
+        ar >> mfMinDistance;
+        ar >> mfMaxDistance;
+    }
+
+    BOOST_SERIALIZATION_SPLIT_MEMBER();
+
+public:
+    void saveExtern(boost::archive::binary_oarchive &ar) const;
+    void loadExtern(boost::archive::binary_iarchive &ar, std::map<long unsigned int, ORB_SLAM2::KeyFrame *> &map_ID_2_KF, std::map<long unsigned int, ORB_SLAM2::MapPoint *> &map_ID_2_Pt);
 };
 
 } // namespace ORB_SLAM2

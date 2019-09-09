@@ -15,6 +15,17 @@
 #include <vector>
 #include <iostream>
 
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/serialization/binary_object.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/shared_ptr.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
+#include <boost/serialization/split_member.hpp>
+
+
 namespace DBoW2 {
 
 /// Vector of nodes with indexes of local features
@@ -47,7 +58,16 @@ public:
    * @param v feature vector
    */
   friend std::ostream& operator<<(std::ostream &out, const FeatureVector &v);
-    
+
+private:
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive &ar, unsigned int)
+    {
+        std::map<NodeId, std::vector<unsigned int> > *map_base = dynamic_cast< std::map<NodeId, std::vector<unsigned int> > * >(this);
+        ar & *map_base;
+    }
+
 };
 
 } // namespace DBoW2

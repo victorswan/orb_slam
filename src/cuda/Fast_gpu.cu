@@ -340,24 +340,52 @@ namespace ORB_SLAM2 { namespace cuda {
     }
   }
 
-  GpuFast::GpuFast(int highThreshold, int lowThreshold, int maxKeypoints)
-    : highThreshold(highThreshold), lowThreshold(lowThreshold), maxKeypoints(maxKeypoints)
+  GpuFast::GpuFast()
   {
-    checkCudaErrors( cudaStreamCreate(&stream) );
-    cvStream = StreamAccessor::wrapStream(stream);
-    checkCudaErrors( cudaMallocManaged(&kpLoc, sizeof(short2) * maxKeypoints) );
-    checkCudaErrors( cudaMallocManaged(&kpScore, sizeof(float) * maxKeypoints) );
-    checkCudaErrors( cudaStreamAttachMemAsync(stream, kpLoc) );
-    checkCudaErrors( cudaStreamAttachMemAsync(stream, kpScore) );
-    checkCudaErrors( cudaMalloc(&counter_ptr, sizeof(unsigned int)) );
+
   }
 
-  GpuFast::~GpuFast() {
-    cvStream.~Stream();
-    checkCudaErrors( cudaFree(counter_ptr) );
-    checkCudaErrors( cudaFree(kpScore) );
-    checkCudaErrors( cudaFree(kpLoc) );
-    checkCudaErrors( cudaStreamDestroy(stream) );
+  GpuFast::~GpuFast()
+  {
+      if(kpLoc != nullptr)
+      {
+          cvStream.~Stream();
+          checkCudaErrors( cudaFree(counter_ptr) );
+          checkCudaErrors( cudaFree(kpScore) );
+          checkCudaErrors( cudaFree(kpLoc) );
+          checkCudaErrors( cudaStreamDestroy(stream) );
+      }
+  }
+
+  void GpuFast::init(int highThreshold, int lowThreshold, int maxKeypoints)
+  {
+      this->highThreshold = highThreshold;
+      this->lowThreshold = lowThreshold;
+
+      if(this->maxKeypoints == maxKeypoints
+              && kpLoc != nullptr)
+      {
+          return;
+      }
+
+      this->maxKeypoints = maxKeypoints;
+
+      if(kpLoc != nullptr)
+      {
+          cvStream.~Stream();
+          checkCudaErrors( cudaFree(counter_ptr) );
+          checkCudaErrors( cudaFree(kpScore) );
+          checkCudaErrors( cudaFree(kpLoc) );
+          checkCudaErrors( cudaStreamDestroy(stream) );
+      }
+
+      checkCudaErrors( cudaStreamCreate(&stream) );
+      cvStream = StreamAccessor::wrapStream(stream);
+      checkCudaErrors( cudaMallocManaged(&kpLoc, sizeof(short2) * maxKeypoints) );
+      checkCudaErrors( cudaMallocManaged(&kpScore, sizeof(float) * maxKeypoints) );
+      checkCudaErrors( cudaStreamAttachMemAsync(stream, kpLoc) );
+      checkCudaErrors( cudaStreamAttachMemAsync(stream, kpScore) );
+      checkCudaErrors( cudaMalloc(&counter_ptr, sizeof(unsigned int)) );
   }
 
   void GpuFast::detectAsync(InputArray _image) {
@@ -470,16 +498,41 @@ namespace ORB_SLAM2 { namespace cuda {
     keypoints[tid].size = size;
   }
 
-  IC_Angle::IC_Angle(unsigned int maxKeypoints) : maxKeypoints(maxKeypoints) {
-    checkCudaErrors( cudaStreamCreate(&stream) );
-    _cvStream = StreamAccessor::wrapStream(stream);
-    checkCudaErrors( cudaMalloc(&keypoints, sizeof(KeyPoint) * maxKeypoints) );
+  IC_Angle::IC_Angle()
+  {
+
   }
 
-  IC_Angle::~IC_Angle() {
-    _cvStream.~Stream();
-    checkCudaErrors( cudaFree(keypoints) );
-    checkCudaErrors( cudaStreamDestroy(stream) );
+  IC_Angle::~IC_Angle()
+  {
+      if(keypoints != nullptr)
+      {
+          _cvStream.~Stream();
+          checkCudaErrors( cudaFree(keypoints) );
+          checkCudaErrors( cudaStreamDestroy(stream) );
+      }
+  }
+
+  void IC_Angle::init(unsigned int maxKeypoints)
+  {
+      if(this->maxKeypoints == maxKeypoints
+              && keypoints != nullptr)
+      {
+          return;
+      }
+
+      this->maxKeypoints = maxKeypoints;
+
+      if(keypoints != nullptr)
+      {
+          _cvStream.~Stream();
+          checkCudaErrors( cudaFree(keypoints) );
+          checkCudaErrors( cudaStreamDestroy(stream) );
+      }
+
+      checkCudaErrors( cudaStreamCreate(&stream) );
+      _cvStream = StreamAccessor::wrapStream(stream);
+      checkCudaErrors( cudaMalloc(&keypoints, sizeof(KeyPoint) * maxKeypoints) );
   }
 
   void IC_Angle::launch_async(InputArray _image, KeyPoint * _keypoints, int npoints, int half_k, int minBorderX, int minBorderY, int octave, int size) {

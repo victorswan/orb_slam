@@ -14,6 +14,16 @@
 #include <map>
 #include <vector>
 
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/serialization/binary_object.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/shared_ptr.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
+#include <boost/serialization/split_member.hpp>
+
 namespace DBoW2 {
 
 /// Id of words
@@ -102,6 +112,15 @@ public:
 	 * @param W number of words in the vocabulary
 	 */
 	void saveM(const std::string &filename, size_t W) const;
+
+private:
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive &ar, unsigned int)
+    {
+        std::map<WordId, WordValue> *map_base = dynamic_cast< std::map<WordId, WordValue> * >(this);
+        ar & *map_base;
+    }
 };
 
 } // namespace DBoW2

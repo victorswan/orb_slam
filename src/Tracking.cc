@@ -275,8 +275,8 @@ Tracking::Tracking(System *pSys, ORBVocabulary *pVoc, FrameDrawer *pFrameDrawer,
 
     if (sensor == System::MONOCULAR)
     {
-        //        mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
-        mpIniORBextractor = new ORBextractor(2000, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+//        mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+        mpIniORBextractor = new ORBextractor(std::min(8000, 10 * nFeatures), fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
     }
 
     cout << endl
@@ -558,23 +558,31 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     }
 
     if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
-        mCurrentFrame = Frame(mImGray, timestamp, mpIniORBextractor, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
-    else {
-#ifdef ENABLE_DETECTION_IO
-    if (fabs(mTimeStamp_loaded - timestamp) < 1e-6)
     {
-        //        cout << "Try creating frame with loaded detection data!" << endl;
-        mCurrentFrame = Frame(mImGray, timestamp, mpORBextractorLeft, 
-            mpORBVocabulary, mK, mDistCoef, mbf, mThDepth, mvKeysLeft, mDiscLeft);
+        std::cout << "NOT_INITIALIZED before  mCurrentFrame" <<std::endl;
+        mCurrentFrame = Frame(mImGray, timestamp, mpIniORBextractor, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
+        std::cout << "NOT_INITIALIZED after  mCurrentFrame" <<std::endl;
     }
     else
     {
-        mCurrentFrame = Frame(mImGray, timestamp, mpORBextractorLeft, 
-            mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
-    }
+#ifdef ENABLE_DETECTION_IO
+        if (fabs(mTimeStamp_loaded - timestamp) < 1e-6)
+        {
+            //        cout << "Try creating frame with loaded detection data!" << endl;
+            mCurrentFrame = Frame(mImGray, timestamp, mpORBextractorLeft,
+                                  mpORBVocabulary, mK, mDistCoef, mbf, mThDepth, mvKeysLeft, mDiscLeft);
+        }
+        else
+        {
+            mCurrentFrame = Frame(mImGray, timestamp, mpORBextractorLeft,
+                                  mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
+        }
 #else
-    mCurrentFrame = Frame(mImGray, timestamp, mpORBextractorLeft, 
-        mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
+//        mCurrentFrame = Frame(mImGray, timestamp, mpIniORBextractor, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
+        std::cout << "before  mCurrentFrame" <<std::endl;
+        mCurrentFrame = Frame(mImGray, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
+        std::cout << "after  mCurrentFrame" <<std::endl;
+
 #endif
     }
 
@@ -652,7 +660,7 @@ void Tracking::Track()
                 {
                     timer_mod.tic();
                     bOK = TrackReferenceKeyFrame();
-                    //                    cout << "number of visible map at TrackReferenceKeyFrame: " << mNumVisibleMpt << endl;
+                    cout << "number of visible map at TrackReferenceKeyFrame: " << mNumVisibleMpt << endl;
                     if (!bOK)
                         cout << "Track loss at func TrackReferenceKeyFrame !!!" << endl;
                     logCurrentFrame.time_track_frame = timer_mod.toc();
@@ -661,7 +669,7 @@ void Tracking::Track()
                 {
                     timer_mod.tic();
                     bOK = TrackWithMotionModel();
-                    //                    cout << "number of visible map at TrackWithMotionModel: " << mNumVisibleMpt << endl;
+                    cout << "number of visible map at TrackWithMotionModel: " << mNumVisibleMpt << endl;
                     if (!bOK)
                         cout << "Track loss at func TrackWithMotionModel !!!" << endl;
                     logCurrentFrame.time_track_motion = timer_mod.toc();
@@ -768,12 +776,16 @@ void Tracking::Track()
         // If we have an initial estimation of the camera pose and matching. Track the local map.
         timer_mod.tic();
 
+        cout << "debug 7" << endl;
+
         if (!mbOnlyTracking)
         {
             if (bOK)
             {
+                cout << "debug 8" << endl;
                 bOK = TrackLocalMap();
-                //                cout << "number of visible map at TrackLocalMap: " << mNumVisibleMpt << endl;
+
+                cout << "number of visible map at TrackLocalMap: " << mNumVisibleMpt << endl;
                 if (!bOK)
                     cout << "Track loss at func TrackLocalMap !!!" << endl;
             }
@@ -785,6 +797,8 @@ void Tracking::Track()
             // the camera we will use the local map again.
             if (bOK && !mbVO)
             {
+                cout << "debug 9" << endl;
+
                 bOK = TrackLocalMap();
             }
         }
@@ -796,8 +810,12 @@ void Tracking::Track()
         else
             mState = LOST;
 
+        cout << "debug 8" << endl;
+
         // Update drawer
         mpFrameDrawer->Update(this);
+
+        cout << "debug 9" << endl;
 
         // If tracking were good, check if we insert a keyframe
         if (bOK)
@@ -931,7 +949,7 @@ void Tracking::Track()
     }
     // unlock the map states?
     //    lock.unlock();
-    // std::cout << "what the hell?" << std::endl;
+     std::cout << "what the hell?" << std::endl;
 
     //
     timer_mod.tic();
@@ -951,10 +969,10 @@ void Tracking::Track()
         double timeCost_sofar = timer_all.toc() + logCurrentFrame.time_ORB_extraction,
                 timeCost_rest = time_track_budget - timeCost_sofar - 0.002;
         // Compute the good feature for local Map
-        // std::cout << "========== total time to proc 1 frame = " << time_track_budget
-        //           << "; already taken " << timeCost_sofar
-        //           << " with ORB time " << logCurrentFrame.time_ORB_extraction
-        //           << " ; left " << timeCost_rest << " ==========" << std::endl;
+        std::cout << "========== total time to proc 1 frame = " << time_track_budget
+                  << "; already taken " << timeCost_sofar
+                  << " with ORB time " << logCurrentFrame.time_ORB_extraction
+                  << " ; left " << timeCost_rest << " ==========" << std::endl;
 #endif
 
         if (mObsHandler != NULL)
@@ -1010,6 +1028,7 @@ void Tracking::Track()
             }
 
             CreateNewKeyFrame();
+
         }
         //        else {
         //            cout << "is Regular Frame!" << endl;
@@ -1058,17 +1077,26 @@ void Tracking::Track()
     }
     logCurrentFrame.time_post_proc = timer_mod.toc();
 
+    cout << "debug 10" << endl;
+
     // Store frame pose information to retrieve the complete camera trajectory afterwards.
     if (!mCurrentFrame.mTcw.empty())
     {
+        cout << "debug 11" << endl;
+
         cv::Mat Tcr = mCurrentFrame.mTcw * mCurrentFrame.mpReferenceKF->GetPoseInverse();
+
+        cout << "debug 12" << endl;
+
         mlRelativeFramePoses.push_back(Tcr);
         mlpReferences.push_back(mpReferenceKF);
         mlFrameTimes.push_back(mCurrentFrame.mTimeStamp);
         mlbLost.push_back(mState == LOST);
     }
-    else
+    else if(!mlRelativeFramePoses.empty())
     {
+        cout << "debug 13" << endl;
+
         // This can happen if tracking is lost
         mlRelativeFramePoses.push_back(mlRelativeFramePoses.back());
         mlpReferences.push_back(mlpReferences.back());
@@ -1078,6 +1106,7 @@ void Tracking::Track()
 
     // push the time log of current frame into the vector
     mFrameTimeLog.push_back(logCurrentFrame);
+
 } // namespace ORB_SLAM2
 
 void Tracking::StereoInitialization()
@@ -1168,6 +1197,7 @@ void Tracking::MonocularInitialization()
             delete mpInitializer;
             mpInitializer = static_cast<Initializer *>(NULL);
             fill(mvIniMatches.begin(), mvIniMatches.end(), -1);
+
             return;
         }
 
@@ -1346,12 +1376,14 @@ bool Tracking::TrackReferenceKeyFrame()
 
     // We perform first an ORB matching with the reference keyframe
     // If enough matches are found we setup a PnP solver
-    ORBmatcher matcher(0.7, true);
+    ORBmatcher matcher(0.9, true);
+
     vector<MapPoint *> vpMapPointMatches;
 #ifdef ENABLE_ANTICIPATION_IN_BUDGET
     mNumVisibleMpt = mpReferenceKF->GetMatchNum();
 #endif
     int nmatches = matcher.SearchByBoW(mpReferenceKF, mCurrentFrame, vpMapPointMatches);
+
 
     double time_stereo = 0;
 #ifdef DELAYED_STEREO_MATCHING
@@ -1370,10 +1402,14 @@ bool Tracking::TrackReferenceKeyFrame()
     mCurrentFrame.mvpMapPoints = vpMapPointMatches;
     mCurrentFrame.SetPose(mLastFrame.mTcw);
 
+
     Optimizer::PoseOptimization(&mCurrentFrame);
+
 
     // Discard outliers
     int nmatchesMap = 0;
+    cout<<"mCurrentFrame.N = "<<mCurrentFrame.N<<endl;
+    cout<<"nmatchesMap = "<<nmatchesMap<<endl;
     for (int i = 0; i < mCurrentFrame.N; i++)
     {
         if (mCurrentFrame.mvpMapPoints[i])
@@ -1392,7 +1428,7 @@ bool Tracking::TrackReferenceKeyFrame()
                 nmatchesMap++;
         }
     }
-
+    cout<<"nmatchesMap = "<<nmatchesMap<<endl;
     logCurrentFrame.lmk_num_frame = nmatches;
 
     return nmatchesMap >= 10;
@@ -1519,6 +1555,7 @@ bool Tracking::TrackWithMotionModel()
 
     // Update last frame pose according to its reference keyframe
     // Create "visual odometry" points if in Localization Mode
+
     UpdateLastFrame();
 
 #ifdef PRED_WITH_ODOM
@@ -2153,12 +2190,12 @@ void Tracking::CreateNewKeyFrame()
                 cv::Mat mTrel = mvOdomPlanned[i].second * Twc_base;
                 pKF->mvTrel.push_back(mTrel);
                 vn ++;
-//                std::cout << setprecision(15) << "timeStamp planned: " << mvOdomPlanned[mOdomLBAIdx].first << " to " << mvOdomPlanned[i].first << std::endl;
-//                std::cout << setprecision(15) << "timeStamp actual: " << pKF->mTimeStamp << std::endl;
-//                std::cout << "mVel planned: " << std::endl
-//                          << mTrel << std::endl;
-//                std::cout << "mVel actual: " << std::endl
-//                          << mVelocity << std::endl;
+                //                std::cout << setprecision(15) << "timeStamp planned: " << mvOdomPlanned[mOdomLBAIdx].first << " to " << mvOdomPlanned[i].first << std::endl;
+                //                std::cout << setprecision(15) << "timeStamp actual: " << pKF->mTimeStamp << std::endl;
+                //                std::cout << "mVel planned: " << std::endl
+                //                          << mTrel << std::endl;
+                //                std::cout << "mVel actual: " << std::endl
+                //                          << mVelocity << std::endl;
             }
             if (vn > VIRTUAL_FRAME_NUM)
                 break ;
@@ -2734,6 +2771,8 @@ bool Tracking::Relocalization()
 
     const int nKFs = vpCandidateKFs.size();
 
+    cout << "vpCandidateKFs.size() = "<< vpCandidateKFs.size() << endl;
+
     // We perform first an ORB matching with each candidate
     // If enough matches are found we setup a PnP solver
     ORBmatcher matcher(0.75, true);
@@ -2749,38 +2788,60 @@ bool Tracking::Relocalization()
 
     int nCandidates = 0;
 
+    cout << "debug 1"<< endl;
     for (int i = 0; i < nKFs; i++)
     {
+        cout << i << endl;
         KeyFrame *pKF = vpCandidateKFs[i];
+        cout << "debug 1.1"<< endl;
         if (pKF->isBad())
+        {
+            cout << "debug 1.2"<< endl;
             vbDiscarded[i] = true;
+        }
         else
         {
+            cout << "debug 1.3"<< endl;
             int nmatches = matcher.SearchByBoW(pKF, mCurrentFrame, vvpMapPointMatches[i]);
+            cout << "debug 1.4"<< endl;
             if (nmatches < 15)
             {
+                cout << "debug 1.5"<< endl;
                 vbDiscarded[i] = true;
                 continue;
             }
             else
             {
+                cout << "debug 1.6"<< endl;
                 PnPsolver *pSolver = new PnPsolver(mCurrentFrame, vvpMapPointMatches[i]);
+                cout << "debug 1.7"<< endl;
                 pSolver->SetRansacParameters(0.99, 10, 300, 4, 0.5, 5.991);
+                cout << "debug 1.8"<< endl;
                 vpPnPsolvers[i] = pSolver;
+                cout << "debug 1.9"<< endl;
                 nCandidates++;
             }
         }
     }
+
+    cout << "debug 2" << endl;
 
     // Alternatively perform some iterations of P4P RANSAC
     // Until we found a camera pose supported by enough inliers
     bool bMatch = false;
     ORBmatcher matcher2(0.9, true);
 
+
+    cout << "debug 3" << endl;
+
     while (nCandidates > 0 && !bMatch)
     {
+        cout << nCandidates << endl;
+
         for (int i = 0; i < nKFs; i++)
         {
+            cout << i << endl;
+
             if (vbDiscarded[i])
                 continue;
 
@@ -2870,12 +2931,16 @@ bool Tracking::Relocalization()
         }
     }
 
+    cout << "debug 4" << endl;
+
     if (!bMatch)
     {
+        cout << "debug 5" << endl;
         return false;
     }
     else
     {
+        cout << "debug 6" << endl;
         int vld_cnt = 0;
         for (int io = 0; io < mCurrentFrame.N; io++)
             if (mCurrentFrame.mvpMapPoints[io])

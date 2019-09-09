@@ -38,19 +38,21 @@ namespace ORB_SLAM2 { namespace cuda {
   const float FEATURE_SIZE = 7.0;
 
   class GpuFast {
-    short2 * kpLoc;
-    float * kpScore;
-    unsigned int * counter_ptr;
-    unsigned int highThreshold;
-    unsigned int lowThreshold;
-    unsigned int maxKeypoints;
-    unsigned int count;
+    short2 * kpLoc = nullptr;
+    float * kpScore = nullptr;
+    unsigned int * counter_ptr = nullptr;
+    unsigned int highThreshold = 0;
+    unsigned int lowThreshold = 0;
+    unsigned int maxKeypoints = 0;
+    unsigned int count = 0;
     cv::cuda::GpuMat scoreMat;
     cudaStream_t stream;
     Stream cvStream;
   public:
-    GpuFast(int highThreshold, int lowThreshold, int maxKeypoints = 10000);
+    GpuFast();
     ~GpuFast();
+
+    void init(int highThreshold, int lowThreshold, int maxKeypoints = exp2(20));
 
     void detect(InputArray, std::vector<KeyPoint>&);
 
@@ -59,13 +61,16 @@ namespace ORB_SLAM2 { namespace cuda {
   };
 
   class IC_Angle {
-    unsigned int maxKeypoints;
-    KeyPoint * keypoints;
+    unsigned int maxKeypoints = 0;
+    KeyPoint * keypoints = nullptr;
     cudaStream_t stream;
     Stream _cvStream;
   public:
-    IC_Angle(unsigned int maxKeypoints = 10000);
+    IC_Angle();
     ~IC_Angle();
+
+    void init(unsigned int maxKeypoints = exp2(20));
+
     void launch_async(InputArray _image, KeyPoint * _keypoints, int npoints, int half_k, int minBorderX, int minBorderY, int octave, int size);
     void join(KeyPoint * _keypoints, int npoints);
 

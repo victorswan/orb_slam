@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(GF_ORB_SLAM2)
 
+#set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 message("ROS version = " $ENV{ROS_DISTRO})
 
 IF(NOT CMAKE_BUILD_TYPE)
@@ -16,8 +18,10 @@ ENDIF()
 IF(NOT DEFINED ENABLE_CUDA_IN_OPENCV)
     SET(ENABLE_CUDA_IN_OPENCV True)
 ENDIF()
+SET(ENABLE_CUDA_IN_OPENCV True)
 message("Enable cuda support: " ${ENABLE_CUDA_IN_OPENCV})
 
+set(CMAKE_INSTALL_PREFIX "/opt/GF_ORB_SLAM2" CACHE PATH "Standard install prefix" FORCE)
 
 # Check architecture
 IF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
@@ -104,8 +108,8 @@ LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
 #     set( OpenCV_DIR /opt/opencv3/share/OpenCV )
 #     find_package(OpenCV 3.4.0 REQUIRED)
 # endif()
-find_package(OpenCV 3.4.1 REQUIRED
-                 PATHS /opt/opencv3
+find_package(OpenCV 3.4.5 REQUIRED
+                 PATHS /opt/opencv
                  NO_DEFAULT_PATH)
     
 # customize eigen dir
@@ -140,7 +144,7 @@ MESSAGE("gtest libs: " ${GTest_LIBRARIES})
 find_package(GFlags REQUIRED)
 MESSAGE("gflags include dirs: " ${GFLAGS_INCLUDE_DIR})
 
-find_package(Boost  REQUIRED COMPONENTS thread system filesystem)
+find_package(Boost  REQUIRED COMPONENTS thread system filesystem serialization)
 MESSAGE("Boost include dirs: " ${Boost_INCLUDE_DIRS})
 
 
@@ -157,6 +161,7 @@ include_directories(
     ${Boost_INCLUDE_DIRS}
     ${GTest_INCLUDE_DIR}
     ${GFLAGS_INCLUDE_DIR}
+	/usr/local/cuda/include
     )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
@@ -188,7 +193,7 @@ if(ENABLE_CUDA_IN_OPENCV)
       src/Sim3Solver.cc
       src/Initializer.cc
       src/Viewer.cc
-      src/FAST_NEON.cc
+#      src/FAST_NEON.cc
       src/cuda/Allocator_gpu.cu
       src/cuda/Fast_gpu.cu
       src/cuda/Orb_gpu.cu
@@ -234,8 +239,10 @@ FILE(GLOB_RECURSE SLAM_EXAMPLE_HEADERS
     ${PROJECT_SOURCE_DIR}/Thirdparty/SLAM++/include/good_graph_testbed/*.h
     ${PROJECT_SOURCE_DIR}/Thirdparty/SLAM++/include/slam/*.h)
 
-if (${ORB_LIB_TYPE} STREQUAL "STATIC")
-    set(LIBS
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib) 
+
+if (${ORB_LIB_TYPE} STREQUAL "STATIC")   
+	set(LIBS
         ${GFLAGS_LIBRARIES}
         ${OpenCV_LIBS}
         # ${EIGEN3_LIBS}
@@ -282,6 +289,14 @@ else()
     target_link_libraries(${PROJECT_NAME} ${LIBS} ${SLAM_PLUS_PLUS_LIBRARIES})
 endif()
 
+#install(TARGETS ${PROJECT_NAME}
+#  LIBRARY DESTINATION $ENV{UC_DIR}/lib
+#  )
+
+#install(DIRECTORY include/
+#  DESTINATION ${CMAKE_INSTALL_PREFIX}/include
+#  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+#  )
 
 # Build examples
 

@@ -407,6 +407,7 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp,
 {
     // Frame ID
     mnId = nNextId++;
+    cout<<"mnId = "<<mnId<<endl;
 
     // Scale Level Info
     mnScaleLevels = mpORBextractorLeft->GetLevels();
@@ -418,7 +419,11 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp,
     mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
     // ORB extraction
+    cout<<"before ExtractORB = "<<mDescriptors.rows<<"\t"<<mDescriptors.cols<<endl;
     ExtractORB(0, imGray);
+    cout<<"after ExtractORB"<<endl;
+
+    cout<<"ExtractORB mDescriptors = "<<mDescriptors.rows<<"\t"<<mDescriptors.cols<<endl;
 
     N = mvKeys.size();
 

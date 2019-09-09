@@ -33,3 +33,6 @@ CMakeFiles/
 *~
 lib/
 .vscode/
+*.os
+*.a
+*.so

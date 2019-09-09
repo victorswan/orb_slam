@@ -36,15 +36,17 @@ namespace ORB_SLAM2 { namespace cuda {
   using namespace cv::cuda;
 
   class GpuOrb {
-    unsigned int maxKeypoints;
-    KeyPoint * keypoints;
+    unsigned int maxKeypoints = 0;
+    KeyPoint * keypoints = nullptr;
     GpuMat descriptors;
     GpuMat desc;
     cudaStream_t stream;
     Stream cvStream;
   public:
-    GpuOrb(int maxKeypoints = 10000);
+    GpuOrb();
     ~GpuOrb();
+
+    void init(int maxKeypoints = exp2(20));
 
     void launch_async(InputArray _image, const KeyPoint * _keypoints, const int npoints);
     void join(Mat &_descriptors);

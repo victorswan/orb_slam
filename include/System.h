@@ -64,7 +64,8 @@ public:
 
 public:
     // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
-    System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, const bool bUseViewer = true);
+    System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, const bool bUseViewer = true,
+           const bool load_map = false, const bool save_map = false, const string map_path = "", const string map_filename = "");
 
     // Proccess the given stereo frame. Images must be synchronized and rectified.
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
@@ -129,8 +130,9 @@ public:
 
 #ifdef ENABLE_MAP_IO
     //
-    void SaveMap(const std::string &map_path);
+    void SaveMap(string &map_path);
     void LoadMap(const std::string &map_path);
+
 #endif
 
 #if defined ENABLE_ANTICIPATION_IN_GRAPH || defined PRED_WITH_ODOM
@@ -173,6 +175,11 @@ public:
     // performs relocalization if tracking fails.
     Tracking *mpTracker;
 
+    bool load_map;
+    bool save_map;
+    string map_path;
+    string map_filename;
+
     // Local Mapper. It manages the local map and performs local bundle adjustment.
     LocalMapping *mpLocalMapper;
 
@@ -208,6 +215,10 @@ public:
     std::mutex mMutexState;
 
     unsigned long max_KF_Id, max_Pt_Id;
+
+protected:
+    void archiveMap(std::string map_path, std::string map_filename) const;
+    void dearchiveMap(std::string map_path, std::string map_filename);
 };
 
 } // namespace ORB_SLAM2

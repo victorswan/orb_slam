@@ -92,6 +92,24 @@ MapPoint::MapPoint(const cv::Mat &Pos, Map *pMap, Frame *pFrame, const int &idxF
     mnId = nNextId++;
 }
 
+MapPoint::MapPoint(Map *pMap)
+    : nObs(0), mpReplaced(static_cast<MapPoint *>(nullptr))
+{
+    mpMap = pMap;
+
+    // GF related variables
+    ObsScore = -1.0;
+    ObsRank = 0;
+    //
+    matchedAtFrameId = 0;
+    updateAtFrameId = 0;
+    goodAtFrameId = 0;
+    mnUsedForLocalMap = 0;
+    //
+    u_proj = FLT_MAX;
+    v_proj = FLT_MAX;
+}
+
 MapPoint::MapPoint(cv::FileStorage &fs, Map *pMap) : nObs(0), mpReplaced(static_cast<MapPoint *>(NULL))
 {
 
@@ -249,10 +267,12 @@ void MapPoint::SetReferenceKeyFrame(KeyFrame *mRKF)
 void MapPoint::AddObservation(KeyFrame *pKF, size_t idx)
 {
     unique_lock<mutex> lock(mMutexFeatures);
-    if (mObservations.count(pKF))
+    if (pKF == nullptr || mObservations.count(pKF))
+    {
         return;
-    mObservations[pKF] = idx;
+    }
 
+    mObservations[pKF] = idx;
     if (pKF->mvuRight[idx] >= 0)
         nObs += 2;
     else
@@ -567,6 +587,49 @@ int MapPoint::PredictScale(const float &currentDist, Frame *pF)
         nScale = pF->mnScaleLevels - 1;
 
     return nScale;
+}
+
+void MapPoint::saveExtern(boost::archive::binary_oarchive &ar) const
+{
+    vector<long unsigned int> mObservations_first;
+    vector<size_t> mObservations_second;
+    for (auto iteo = mObservations.begin(); iteo != mObservations.end(); iteo++)
+    {
+        mObservations_first.push_back(iteo->first->mnId);
+        mObservations_second.push_back(iteo->second);
+    }
+    saveVector(ar, mObservations_first);
+    saveVector(ar, mObservations_second);
+
+    ar << mpRefKF->mnId;
+}
+
+void MapPoint::loadExtern(boost::archive::binary_iarchive &ar, std::map<unsigned long, KeyFrame *> &map_ID_2_KF, std::map<unsigned long, MapPoint *> &map_ID_2_Pt)
+{
+    vector<long unsigned int> mObservations_first;
+    vector<size_t> mObservations_second;
+    loadVector(ar, mObservations_first);
+    loadVector(ar, mObservations_second);
+    for (size_t i = 0; i < mObservations_first.size(); i++)
+    {
+        auto kf_iter = map_ID_2_KF.find(mObservations_first[i]);
+        if (kf_iter != map_ID_2_KF.end())
+        {
+            this->AddObservation(kf_iter->second, mObservations_second[i]);
+        }
+    }
+
+    long unsigned int tmp_id;
+    ar >> tmp_id;
+    auto kf_iter = map_ID_2_KF.find(tmp_id);
+    if (kf_iter != map_ID_2_KF.end())
+    {
+        this->SetReferenceKeyFrame(kf_iter->second);
+    }
+    else
+    {
+        this->SetBadFlag();
+    }
 }
 
 } // namespace ORB_SLAM2

@@ -1229,7 +1229,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap
         //
         num_fixed_KF = lFixedCameras.size();
 
-        printf("subset num. of camera poses = %d, lmk = %d, fixed poses = %d\n", num_free_KF, num_Point, num_fixed_KF);
+//        printf("subset num. of camera poses = %d, lmk = %d, fixed poses = %d\n", num_free_KF, num_Point, num_fixed_KF);
 
 #ifdef GOOD_GRAPH_TIME_LOGGING
         time_log.time_gg_optimization += timer.toc();
@@ -1625,7 +1625,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap
 
             if (pKFi->mnBALocalForKF != pKF->mnId && pKFi->mnBAFixedForKF != pKF->mnId)
             {
-#if defined ENABLE_SLIDING_WINDOW_FILTER && defined ENABLE_COVIS_GRAPH
+#if defined ENABLE_SLIDING_WINDOW_FILTER || defined ENABLE_COVIS_GRAPH
                 if (pKFi->mnBALocalCount >= GOOD_GRAPH_FIXED_THRES)
                 {
 #endif
@@ -1633,7 +1633,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap
                     if (!pKFi->isBad()) {
                         lFixedCameras.push_back(pKFi);
                     }
-#if defined ENABLE_SLIDING_WINDOW_FILTER && defined ENABLE_COVIS_GRAPH
+#if defined ENABLE_SLIDING_WINDOW_FILTER || defined ENABLE_COVIS_GRAPH
                 }
 #endif
             }
@@ -1642,7 +1642,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap
     //
     num_fixed_KF = lFixedCameras.size();
 
-    printf("subset num. of camera poses = %d, lmk = %d, fixed poses = %d\n", num_free_KF, num_Point, num_fixed_KF);
+//    printf("subset num. of camera poses = %d, lmk = %d, fixed poses = %d\n", num_free_KF, num_Point, num_fixed_KF);
 
     // Setup optimizer
     g2o::SparseOptimizer optimizer;
@@ -1804,6 +1804,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap
         }
     }
 
+
     optimizer.initializeOptimization();
 
 #ifdef GROUND_TRUTH_GEN_MODE
@@ -1863,6 +1864,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap
         optimizer.optimize(10);
 #endif
     }
+
 
     vector<pair<KeyFrame *, MapPoint *>> vToErase;
     vToErase.reserve(vpEdgesMono.size() + vpEdgesStereo.size());

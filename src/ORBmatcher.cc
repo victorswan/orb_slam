@@ -271,9 +271,12 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF, Frame &F, vector<MapPoint *> &vpMapPo
 {
     const vector<MapPoint *> vpMapPointsKF = pKF->GetMapPointMatches();
 
+    cout<<"F.N = "<<F.N<<endl;
     vpMapPointMatches = vector<MapPoint *>(F.N, static_cast<MapPoint *>(NULL));
 
     const DBoW2::FeatureVector &vFeatVecKF = pKF->mFeatVec;
+
+    cout<<"pKF->mFeatVec.size() = "<<pKF->mFeatVec.size()<<endl;
 
     int nmatches = 0;
 
@@ -281,6 +284,7 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF, Frame &F, vector<MapPoint *> &vpMapPo
     for (int i = 0; i < HISTO_LENGTH; i++)
         rotHist[i].reserve(500);
     const float factor = 1.0f / HISTO_LENGTH;
+
 
     // We perform the matching over ORB that belong to the same vocabulary node (at a certain level)
     DBoW2::FeatureVector::const_iterator KFit = vFeatVecKF.begin();
@@ -292,14 +296,17 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF, Frame &F, vector<MapPoint *> &vpMapPo
     {
         if (KFit->first == Fit->first)
         {
+
             const vector<unsigned int> vIndicesKF = KFit->second;
             const vector<unsigned int> vIndicesF = Fit->second;
 
             for (size_t iKF = 0; iKF < vIndicesKF.size(); iKF++)
             {
+
                 const unsigned int realIdxKF = vIndicesKF[iKF];
 
                 MapPoint *pMP = vpMapPointsKF[realIdxKF];
+
 
                 if (!pMP)
                     continue;
@@ -307,7 +314,9 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF, Frame &F, vector<MapPoint *> &vpMapPo
                 if (pMP->isBad())
                     continue;
 
+
                 const cv::Mat &dKF = pKF->mDescriptors.row(realIdxKF);
+
 
                 int bestDist1 = 256;
                 int bestIdxF = -1;
@@ -336,10 +345,13 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF, Frame &F, vector<MapPoint *> &vpMapPo
                     }
                 }
 
+
                 if (bestDist1 <= TH_LOW)
                 {
+
                     if (static_cast<float>(bestDist1) < mfNNratio * static_cast<float>(bestDist2))
                     {
+
                         vpMapPointMatches[bestIdxF] = pMP;
 
                         const cv::KeyPoint &kp = pKF->mvKeysUn[realIdxKF];
@@ -349,13 +361,15 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF, Frame &F, vector<MapPoint *> &vpMapPo
                             float rot = kp.angle - F.mvKeys[bestIdxF].angle;
                             if (rot < 0.0)
                                 rot += 360.0f;
-                            int bin = round(rot * factor);
+//                            int bin = round(rot * factor);
+                            int bin = round(rot/(360.0f*factor));
                             if (bin == HISTO_LENGTH)
                                 bin = 0;
                             assert(bin >= 0 && bin < HISTO_LENGTH);
                             rotHist[bin].push_back(bestIdxF);
                         }
                         nmatches++;
+
 
 #ifdef BUDGETING_FEATURE_MATCHING
                         if (nmatches >= MAX_NUM_FEATURE_MATCHING)
@@ -367,18 +381,24 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF, Frame &F, vector<MapPoint *> &vpMapPo
                 }
             }
 
+
             KFit++;
             Fit++;
         }
         else if (KFit->first < Fit->first)
         {
+
             KFit = vFeatVecKF.lower_bound(Fit->first);
         }
         else
         {
+
             Fit = F.mFeatVec.lower_bound(KFit->first);
         }
+
     }
+
+    cout<<"nmatches = "<<nmatches<<endl;
 
     if (mbCheckOrientation)
     {
@@ -399,6 +419,8 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF, Frame &F, vector<MapPoint *> &vpMapPo
             }
         }
     }
+
+    cout<<"nmatches = "<<nmatches<<endl;
 
     return nmatches;
 }
@@ -1461,6 +1483,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame,
     const bool bForward = tlc.at<float>(2) > CurrentFrame.mb && !bMono;
     const bool bBackward = -tlc.at<float>(2) > CurrentFrame.mb && !bMono;
 
+//    cout<<"LastFrame.N = "<<LastFrame.N<<"\n";
     for (int i = 0; i < LastFrame.N; i++)
     {
         MapPoint *pMP = LastFrame.mvpMapPoints[i];
@@ -1483,6 +1506,10 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame,
                 float u = CurrentFrame.fx * xc * invzc + CurrentFrame.cx;
                 float v = CurrentFrame.fy * yc * invzc + CurrentFrame.cy;
 
+//                cout<<"uv = "<<u<<"\t"<<v<<"\n";
+//                cout<<"x = "<<CurrentFrame.mnMinX<<"\t"<<CurrentFrame.mnMaxX<<"\n";
+//                cout<<"y = "<<CurrentFrame.mnMinY<<"\t"<<CurrentFrame.mnMaxY<<"\n";
+
                 if (u < CurrentFrame.mnMinX || u > CurrentFrame.mnMaxX)
                     continue;
                 if (v < CurrentFrame.mnMinY || v > CurrentFrame.mnMaxY)
@@ -1490,6 +1517,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame,
 
                 //
                 numVisibleMpt ++;
+//                cout<<"numVisibleMpt = "<<numVisibleMpt<<"\n";
 
                 int nLastOctave = LastFrame.mvKeys[i].octave;
 

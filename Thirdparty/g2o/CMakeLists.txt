@@ -3,6 +3,8 @@ SET(CMAKE_LEGACY_CYGWIN_WIN32 0)
 
 PROJECT(g2o)
 
+#set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 SET(g2o_C_FLAGS)
 SET(g2o_CXX_FLAGS)
 
@@ -14,7 +16,7 @@ ENDIF()
 MESSAGE(STATUS "BUILD TYPE:" ${CMAKE_BUILD_TYPE})
 
 IF(NOT G2O_LIB_TYPE)
-  SET(G2O_LIB_TYPE "STATIC") # "SHARED"
+  SET(G2O_LIB_TYPE "SHARED") # "SHARED"
 ENDIF(NOT G2O_LIB_TYPE)
 
 # There seems to be an issue with MSVC8
@@ -102,7 +104,7 @@ ${g2o_SOURCE_DIR}/stuff
 ${G2O_EIGEN3_INCLUDE})
 
 # Include the subdirectories
-ADD_LIBRARY(g2o ${G2O_LIB_TYPE}
+ADD_LIBRARY(${PROJECT_NAME} ${G2O_LIB_TYPE}
 #types
 g2o/types/types_sba.h
 g2o/types/types_six_dof_expmap.h
@@ -188,3 +190,4 @@ g2o/stuff/string_tools.cpp
 g2o/stuff/property.cpp       
 g2o/stuff/property.h       
 )
+

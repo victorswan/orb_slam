@@ -712,11 +712,21 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(const vector<cv::KeyPoint> 
 
 #ifdef CUDA_ACC_FAST
 
-ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
-                           int _iniThFAST, int _minThFAST) : nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels),
-    iniThFAST(_iniThFAST), minThFAST(_minThFAST),
-    gpuFast(iniThFAST, minThFAST), ic_angle(), gpuOrb()
+cuda::GpuFast ORBextractor::gpuFast;
+cuda::IC_Angle ORBextractor::ic_angle;
+cuda::GpuOrb ORBextractor::gpuOrb;
+
+ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels, int _iniThFAST, int _minThFAST)
+    : nfeatures(_nfeatures),
+      scaleFactor(_scaleFactor),
+      nlevels(_nlevels),
+      iniThFAST(_iniThFAST),
+      minThFAST(_minThFAST)
 {
+    gpuFast.init(iniThFAST, minThFAST);
+    ic_angle.init();
+    gpuOrb.init();
+
     mvScaleFactor.resize(nlevels);
     mvLevelSigma2.resize(nlevels);
     mvScaleFactor[0] = 1.0f;
@@ -798,6 +808,7 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint>> &allKeypoint
             gpuFast.detectAsync(mvImagePyramid[level].rowRange(minBorderY, maxBorderY).colRange(minBorderX, maxBorderX));
         }
         gpuFast.joinDetectAsync(vToDistributeKeys);
+
         if (level + 1 < nlevels)
         {
             const int maxBorderX = mvImagePyramid[level + 1].cols - EDGE_THRESHOLD + 3;

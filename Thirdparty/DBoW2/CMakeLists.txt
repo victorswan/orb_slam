@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(DBoW2)
 
+#set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
 ENDIF()
@@ -51,13 +53,13 @@ set(SRCS_DUTILS
 #     set( OpenCV_DIR /opt/opencv3/share/OpenCV )
 #     find_package(OpenCV 3.4.0 REQUIRED)
 # endif()
-find_package(OpenCV 3.4.1 REQUIRED
-                 PATHS /opt/opencv3
+find_package(OpenCV 3.4.5 REQUIRED
+                 PATHS /opt/opencv
                  NO_DEFAULT_PATH)
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 include_directories(${OpenCV_INCLUDE_DIRS})
-add_library(DBoW2 ${DBOW2_LIB_TYPE} ${SRCS_DBOW2} ${SRCS_DUTILS})
-target_link_libraries(DBoW2 ${OpenCV_LIBS})
+add_library(${PROJECT_NAME} ${DBOW2_LIB_TYPE} ${SRCS_DBOW2} ${SRCS_DUTILS})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
 

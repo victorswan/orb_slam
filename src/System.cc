@@ -37,10 +37,16 @@ bool has_suffix(const std::string &str, const std::string &suffix)
 namespace ORB_SLAM2
 {
 
-System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
-               const bool bUseViewer) : mSensor(sensor), mpViewer(static_cast<Viewer *>(NULL)), mbReset(false), mbActivateLocalizationMode(false),
+System::System(const string &strVocFile, const string &strSettingsFile, const System::eSensor sensor, const bool bUseViewer,
+               const bool load_map, const bool save_map, const string map_path, const string map_filename)
+    : mSensor(sensor), mpViewer(static_cast<Viewer *>(NULL)), mbReset(false), mbActivateLocalizationMode(false),
     mbDeactivateLocalizationMode(false)
 {
+    this->load_map = load_map;
+    this->save_map = save_map;
+    this->map_path = map_path;
+    this->map_filename = map_filename;
+
     // Output welcome message
     cout << endl
          << "ORB-SLAM2 Copyright (C) 2014-2016 Raul Mur-Artal, University of Zaragoza." << endl
@@ -104,6 +110,12 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     //(it will live in the main thread of execution, the one that called this constructor)
     mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
                              mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor);
+
+    //Load Map
+    if(this->load_map)
+    {
+        this->dearchiveMap(this->map_path, this->map_filename);
+    }
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(mpMap, mSensor == MONOCULAR);
@@ -318,7 +330,9 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
         }
     }
 
+    std::cout<< "before GrabImageMonocular" <<std::endl;
     cv::Mat Tcw = mpTracker->GrabImageMonocular(im, timestamp);
+    std::cout<< "after GrabImageMonocular" <<std::endl;
 
     unique_lock<mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
@@ -407,6 +421,12 @@ void System::Shutdown()
     // disabled the text change for smooth termination & logging
     //    if(mpViewer)
     //        pangolin::BindToContext("ORB-SLAM2: Map Viewer");
+
+    //Load Map
+    if(this->save_map)
+    {
+        this->archiveMap(this->map_path, this->map_filename);
+    }
 
     cout << "At the end of system Shutdown!" << endl;
 }
@@ -908,6 +928,7 @@ void System::LoadOdomPlanned(const std::string &odom_path) {
 // Stick to the auto it & find & end check process for safety!!!
 //
 #ifdef ENABLE_MAP_IO
+
 // Load & Save Function
 void System::LoadMap(const std::string &map_path)
 {
@@ -1339,8 +1360,19 @@ void System::LoadMap(const std::string &map_path)
     MapPoint::nNextId = max_Pt_Id + 1;
 }
 
-void System::SaveMap(const std::string &map_path)
+void System::SaveMap(std::string &map_path)
 {
+    vector<ORB_SLAM2::KeyFrame *> vpKFs = mpMap->GetAllKeyFrames();
+    if(vpKFs.empty())
+    {
+        return;
+    }
+    sort(vpKFs.begin(), vpKFs.end(), ORB_SLAM2::KeyFrame::idComp);
+
+    int64_t start_timestamp = int64_t(vpKFs.front()->mTimeStamp * 1000000);
+    int64_t end_timestamp = int64_t(vpKFs.back()->mTimeStamp * 1000000);
+    map_path = map_path + "/" + std::to_string(start_timestamp) + "_" + std::to_string(end_timestamp);
+
     //
     //    if (!boost::filesystem::create_directories(map_path)) {
     //        return ;
@@ -1371,8 +1403,7 @@ void System::SaveMap(const std::string &map_path)
 
     //
     // grab all keyframes
-    vector<ORB_SLAM2::KeyFrame *> vpKFs = mpMap->GetAllKeyFrames();
-    sort(vpKFs.begin(), vpKFs.end(), ORB_SLAM2::KeyFrame::idComp);
+
 
     cout << endl
          << "Saving KF mnIds to KF_idList.txt" << endl;
@@ -1496,6 +1527,181 @@ void System::SaveMap(const std::string &map_path)
 
     //    }
 }
+
+void System::archiveMap(std::string map_path, std::string map_filename) const
+{
+    auto vpKFs = mpMap->GetAllKeyFrames();
+    auto vpMPs = mpMap->GetAllMapPoints();
+    auto vpRMPs = mpMap->GetReferenceMapPoints();
+
+    sort(vpKFs.begin(), vpKFs.end(), ORB_SLAM2::KeyFrame::idComp);
+    sort(vpMPs.begin(), vpMPs.end(), ORB_SLAM2::MapPoint::isLessID);
+    sort(vpRMPs.begin(), vpRMPs.end(), ORB_SLAM2::MapPoint::isLessID);
+
+    boost::filesystem::create_directories(map_path);
+    std::string map_file = map_path + "/" + map_filename;
+    std::ofstream ofs(map_file, ios::binary);
+    boost::archive::binary_oarchive oa(ofs);
+
+    size_t keyframe_size = vpKFs.size();
+    oa << keyframe_size;
+    for (size_t i = 0; i < keyframe_size; i++)
+    {
+        oa << *(vpKFs[i]);
+    }
+
+    size_t mappoint_size = vpMPs.size();
+    oa << mappoint_size;
+    for (size_t i = 0; i < mappoint_size; i++)
+    {
+        oa << *(vpMPs[i]);
+    }
+
+    for (size_t i = 0; i < keyframe_size; i++)
+    {
+        vpKFs[i]->saveExtern(oa);
+    }
+
+    for (size_t i = 0; i < mappoint_size; i++)
+    {
+        vpMPs[i]->saveExtern(oa);
+    }
+
+    size_t ref_mappoint_size = vpRMPs.size();
+    oa << ref_mappoint_size;
+    for (size_t i = 0; i < ref_mappoint_size; i++)
+    {
+        oa << vpRMPs[i]->mnId;
+    }
+}
+
+void System::dearchiveMap(std::string map_path, std::string map_filename)
+{
+    std::string map_file = map_path + "/" + map_filename;
+    if(boost::filesystem::exists(map_file))
+    {
+        std::ifstream ifs(map_file, ios::binary);
+        boost::archive::binary_iarchive ia(ifs);
+
+        std::cout<<"dearchiveMap 1"<<std::endl;
+
+        size_t keyframe_size;
+        ia >> keyframe_size;
+        std::cout<<"dearchiveMap 2 = "<<keyframe_size<<std::endl;
+        vector<ORB_SLAM2::KeyFrame *> vpKFs(keyframe_size);
+        std::map<long unsigned int, ORB_SLAM2::KeyFrame *> map_ID_2_KF;
+        max_KF_Id = 0;
+        for (size_t i = 0; i < keyframe_size; i++)
+        {
+            vpKFs[i] = new ORB_SLAM2::KeyFrame(mpMap, mpVocabulary, mpKeyFrameDatabase);
+            ia >> *(vpKFs[i]);
+            vector<cv::Mat> vCurrentDesc = ORB_SLAM2::Converter::toDescriptorVector(vpKFs[i]->mDescriptors);
+            vpKFs[i]->mpORBvocabulary->transform(vCurrentDesc, vpKFs[i]->mBowVec, vpKFs[i]->mFeatVec, 4);
+
+            map_ID_2_KF.insert(std::make_pair(vpKFs[i]->mnId, vpKFs[i]));
+            max_KF_Id = max(vpKFs[i]->mnId, max_KF_Id);
+        }
+
+        size_t mappoint_size;
+        ia >> mappoint_size;
+        std::cout<<"dearchiveMap 3 = "<<mappoint_size<<std::endl;
+        vector<ORB_SLAM2::MapPoint *> vpMPs(mappoint_size);
+        std::map<long unsigned int, ORB_SLAM2::MapPoint *> map_ID_2_Pt;
+        max_Pt_Id = 0;
+        for (size_t i = 0; i < mappoint_size; i++) //vpMPs.size()
+        {
+            vpMPs[i] = new ORB_SLAM2::MapPoint(mpMap);
+            ia >> *(vpMPs[i]);
+
+            map_ID_2_Pt.insert(std::make_pair(vpMPs[i]->mnId, vpMPs[i]));
+            max_Pt_Id = max(vpMPs[i]->mnId, max_Pt_Id);
+        }
+
+        std::cout<<"dearchiveMap 4 = "<<keyframe_size<<std::endl;
+        for (size_t i = 0; i < keyframe_size; i++)
+        {
+            vpKFs[i]->loadExtern(ia, map_ID_2_KF, map_ID_2_Pt);
+        }
+
+        std::cout<<"dearchiveMap 5 = "<<mappoint_size<<std::endl;
+        for (size_t i = 0; i < mappoint_size; i++)
+        {
+            vpMPs[i]->loadExtern(ia, map_ID_2_KF, map_ID_2_Pt);
+        }
+
+        size_t ref_mappoint_size;
+        ia >> ref_mappoint_size;
+        std::cout<<"dearchiveMap 6 = "<<keyframe_size<<std::endl;
+        vector<ORB_SLAM2::MapPoint *> vpRMPs;
+        vpRMPs.reserve(ref_mappoint_size);
+        for (size_t i = 0; i < ref_mappoint_size; i++)
+        {
+            long unsigned int tmp_id;
+            ia >> tmp_id;
+            auto pt_iter = map_ID_2_Pt.find(tmp_id);
+            if(pt_iter != map_ID_2_Pt.end())
+            {
+                vpRMPs.push_back(pt_iter->second);
+            }
+        }
+
+        std::cout<<"dearchiveMap 7"<<std::endl;
+
+        //load KerFrames, MapPoints, Reference MapPoints, Database
+        cout << "AddKeyFrame.." << endl;
+        for (size_t i = 0; i < vpKFs.size(); i++)
+            if (!vpKFs[i]->isBad())
+                mpMap->AddKeyFrame(vpKFs[i]);
+
+        cout << "AddMapPoint.." << endl;
+        for (size_t i = 0; i < vpMPs.size(); i++)
+            if (!vpMPs[i]->isBad())
+                mpMap->AddMapPoint(vpMPs[i]);
+
+        cout << "SetReferenceMapPoints.." << endl;
+        mpMap->SetReferenceMapPoints(vpRMPs);
+
+        cout << "add mpKeyFrameDatabase.." << endl;
+        for (size_t i = 0; i < vpKFs.size(); i++)
+            if (!vpKFs[i]->isBad())
+                mpKeyFrameDatabase->add(vpKFs[i]);
+
+        if(keyframe_size > 0 && mappoint_size > 0)
+        {
+            // set the 1st KF as reloc reference
+            auto last_kf = vpKFs.back();
+            mpTracker->SetLastKeyFrameId(last_kf->mnId);
+            mpTracker->SetLastKeyFrame(last_kf);
+            mpTracker->SetReferenceKeyFrame(last_kf);
+
+            for (size_t i = 0; i < vpKFs.size(); i++)
+            {
+                if (!vpKFs[i]->isBad())
+                {
+                    mpTracker->SetLastKeyFrameId(vpKFs[i]->mnId);
+                    mpTracker->SetLastKeyFrame(vpKFs[i]);
+                    mpTracker->SetReferenceKeyFrame(vpKFs[i]);
+                    break;
+                }
+            }
+
+            //    long unsigned int lastKFId = vpKFs[vpKFs.size()-1]->mnId;
+            //    ORB_SLAM2::Frame Frame(lastKFId);
+            //
+            KeyFrame::nNextId = max_KF_Id + 1;
+            Frame::nNextId = max_KF_Id + 1;
+            MapPoint::nNextId = max_Pt_Id + 1;
+
+            DeactivateLocalizationMode();
+            ForceRelocTracker();
+        }
+
+        cout << "dearchiveMap done.." << endl;
+    }
+}
+
 #endif
 
 } // namespace ORB_SLAM2
+
+

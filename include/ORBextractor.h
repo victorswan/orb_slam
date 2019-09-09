@@ -30,7 +30,7 @@
 #endif
 
 // use GPU to speed up FAST detection (you can only choose one of the two macros!)
-// #define CUDA_ACC_FAST
+ #define CUDA_ACC_FAST
 
 // optimized for NEON in FAST detection (you can only choose one of the two macros!)
 // #define NEON_ACC_FAST
@@ -154,9 +154,9 @@ protected:
 #ifdef CUDA_ACC_FAST
     cv::Ptr<cv::cuda::Filter> mpGaussianFilter;
     cuda::Stream mcvStream;
-    cuda::GpuFast gpuFast;
-    cuda::IC_Angle ic_angle;
-    cuda::GpuOrb gpuOrb;
+    static cuda::GpuFast gpuFast;
+    static cuda::IC_Angle ic_angle;
+    static cuda::GpuOrb gpuOrb;
 #endif
 
     int nfeatures;

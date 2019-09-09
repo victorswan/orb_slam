@@ -68,6 +68,24 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB) : mnFrameId(F.m
 }
 
 #ifdef ENABLE_MAP_IO
+
+KeyFrame::KeyFrame(Map *mMap, ORBVocabulary *mVocabulary, KeyFrameDatabase *mKeyFrameDatabase)
+ : mnBALocalForKFCand(0), mnBAFixedForKFCand(0), mnBALocalCount(0)
+{
+    mnRelocQuery = ULONG_MAX;
+    mnRelocWords = 0;
+    mRelocScore = 0;
+
+    mpKeyFrameDB = mKeyFrameDatabase;
+    mpORBvocabulary = mVocabulary;
+
+    mpParent = nullptr;
+
+    mpMap = mMap;
+
+    mvpMapPoints.clear();
+}
+
 KeyFrame::KeyFrame(cv::FileStorage &fs, Map *mMap,
                    ORBVocabulary *mVocabulary, KeyFrameDatabase *mKeyFrameDatabase) : mnBALocalForKFCand(0), mnBAFixedForKFCand(0), mnBALocalCount(0)
 {
@@ -188,6 +206,7 @@ KeyFrame::KeyFrame(cv::FileStorage &fs, Map *mMap,
 
     mvpMapPoints.clear();
 }
+
 #endif
 
 void KeyFrame::ExportToYML(cv::FileStorage &fs)
@@ -704,10 +723,14 @@ void KeyFrame::EraseChild(KeyFrame *pKF)
 
 void KeyFrame::ChangeParent(KeyFrame *pKF)
 {
-    unique_lock<mutex> lockCon(mMutexConnections);
-    mpParent = pKF;
-    pKF->AddChild(this);
-    //    cout << "ChangeParent called!" << endl;
+    {
+        unique_lock<mutex> lockCon(mMutexConnections);
+        mpParent = pKF;
+    }
+    if(pKF != nullptr)
+    {
+        pKF->AddChild(this);
+    }
 }
 
 set<KeyFrame *> KeyFrame::GetChilds()
@@ -972,6 +995,140 @@ float KeyFrame::ComputeSceneMedianDepth(const int q)
     sort(vDepths.begin(), vDepths.end());
 
     return vDepths[(vDepths.size() - 1) / q];
+}
+
+void KeyFrame::saveExtern(boost::archive::binary_oarchive &ar) const
+{
+    vector<double> mvMapPoints;
+    for (size_t i = 0; i < mvpMapPoints.size(); i++)
+    {
+        if (mvpMapPoints[i] != nullptr)
+        {
+            mvMapPoints.push_back(static_cast<double>(mvpMapPoints[i]->mnId));
+        }
+        else
+        {
+            mvMapPoints.push_back(-1);
+        }
+    }
+    saveVector(ar, mvMapPoints);
+
+    vector<long unsigned int> mConnectedKeyFrameWeights_first;
+    vector<int> mConnectedKeyFrameWeights_second;
+    for (auto iteckfw = mConnectedKeyFrameWeights.begin(); iteckfw != mConnectedKeyFrameWeights.end(); iteckfw++)
+    {
+        mConnectedKeyFrameWeights_first.push_back(iteckfw->first->mnId);
+        mConnectedKeyFrameWeights_second.push_back(iteckfw->second);
+    }
+    saveVector(ar, mConnectedKeyFrameWeights_first);
+    saveVector(ar, mConnectedKeyFrameWeights_second);
+
+    vector<long unsigned int> mvOrderedConnectedKeyFrames;
+    for (size_t i = 0; i < mvpOrderedConnectedKeyFrames.size(); i++)
+    {
+        mvOrderedConnectedKeyFrames.push_back(mvpOrderedConnectedKeyFrames[i]->mnId);
+    }
+    saveVector(ar, mvOrderedConnectedKeyFrames);
+
+
+    double tmp_mnid = ((mpParent == nullptr) ? -1 : mpParent->mnId);
+    ar << tmp_mnid;
+
+    vector<long unsigned int> msChildrens;
+    for (auto itec = mspChildrens.begin(); itec != mspChildrens.end(); itec++)
+    {
+        msChildrens.push_back((*itec)->mnId);
+    }
+    saveVector(ar, msChildrens);
+
+    vector<long unsigned int> msLoopEdges;
+    for (auto itele = mspLoopEdges.begin(); itele != mspLoopEdges.end(); itele++)
+    {
+        msLoopEdges.push_back((*itele)->mnId);
+    }
+    saveVector(ar, msLoopEdges);
+}
+
+void KeyFrame::loadExtern(boost::archive::binary_iarchive &ar, std::map<unsigned long, KeyFrame *> &map_ID_2_KF, std::map<unsigned long, MapPoint *> &map_ID_2_Pt)
+{
+    vector<double> mvMapPoints;
+    loadVector(ar, mvMapPoints);
+    for(size_t i = 0; i < mvMapPoints.size(); i++)
+    {
+        if(mvMapPoints[i] >= 0)
+        {
+            auto pt_iter = map_ID_2_Pt.find(static_cast<long unsigned int>(mvMapPoints[i]));
+            if (pt_iter != map_ID_2_Pt.end())
+            {
+                this->AppendMapPoint(pt_iter->second);
+            }
+            else
+            {
+                this->AppendMapPoint(nullptr);
+            }
+        }
+        else
+        {
+            this->AppendMapPoint(nullptr);
+        }
+    }
+
+    vector<long unsigned int> mConnectedKeyFrameWeights_first;
+    vector<int> mConnectedKeyFrameWeights_second;
+    loadVector(ar, mConnectedKeyFrameWeights_first);
+    loadVector(ar, mConnectedKeyFrameWeights_second);
+    for (size_t i = 0; i < mConnectedKeyFrameWeights_second.size(); i++)
+    {
+        auto kf_iter = map_ID_2_KF.find(mConnectedKeyFrameWeights_first[i]);
+        if (kf_iter != map_ID_2_KF.end())
+        {
+            this->AddConnection(kf_iter->second, mConnectedKeyFrameWeights_second[i]);
+        }
+    }
+
+    vector<long unsigned int> mvOrderedConnectedKeyFrames;
+    loadVector(ar, mvOrderedConnectedKeyFrames);
+    for (size_t i = 0; i < mvOrderedConnectedKeyFrames.size(); i++)
+    {
+        auto kf_iter = map_ID_2_KF.find(mvOrderedConnectedKeyFrames[i]);
+        if (kf_iter != map_ID_2_KF.end())
+        {
+            this->AddCovisibleKeyFrames(kf_iter->second);
+        }
+    }
+
+    double tmp_mnid;
+    ar >> tmp_mnid;
+    if(tmp_mnid >= 0)
+    {
+        auto kf_iter = map_ID_2_KF.find(static_cast<long unsigned int>(tmp_mnid));
+        if (kf_iter != map_ID_2_KF.end())
+        {
+            this->ChangeParent(kf_iter->second);
+        }
+    }
+
+    vector<long unsigned int> msChildrens;
+    loadVector(ar, msChildrens);
+    for (size_t i = 0; i < msChildrens.size(); i++)
+    {
+        auto kf_iter = map_ID_2_KF.find(msChildrens[i]);
+        if (kf_iter != map_ID_2_KF.end())
+        {
+            this->AddChild(kf_iter->second);
+        }
+    }
+
+    vector<long unsigned int> msLoopEdges;
+    loadVector(ar, msLoopEdges);
+    for (size_t i = 0; i < msLoopEdges.size(); i++)
+    {
+        auto kf_iter = map_ID_2_KF.find(msLoopEdges[i]);
+        if (kf_iter != map_ID_2_KF.end())
+        {
+            this->AddLoopEdge(kf_iter->second);
+        }
+    }
 }
 
 } // namespace ORB_SLAM2

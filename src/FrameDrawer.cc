@@ -37,6 +37,7 @@ FrameDrawer::FrameDrawer(Map *pMap) : mpMap(pMap)
 
 cv::Mat FrameDrawer::DrawFrame()
 {
+
     cv::Mat im;
     vector<cv::KeyPoint> vIniKeys;     // Initialization: KeyPoints in reference frame
     vector<int> vMatches;              // Initialization: correspondeces with reference keypoints

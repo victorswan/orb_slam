@@ -54,8 +54,8 @@ using namespace Eigen;
 #include <mutex>
 
 /* --- options of debugging and logging --- */
-//#define TIMECOST_VERBOSE
-//#define LMKNUM_VERBOSE
+#define TIMECOST_VERBOSE
+#define LMKNUM_VERBOSE
 #define REALTIME_TRAJ_LOGGING
 
 /* --- options for ground truth generation, by running at a slow rate and additional optimization iterations --- */
@@ -65,15 +65,14 @@ using namespace Eigen;
 // #define ENABLE_WHITE_BALANCE
 // #define ENABLE_LARGE_SEARCH_WINDOW
 
-/* --- options of baseline methods --- */
-// #define ORB_SLAM_BASELINE
+#define ORB_SLAM_BASELINE
 // #define DISABLE_RELOC
 
 /* --- options of key-frame insert condition --- */
 // #define SPARSE_KEYFRAME_COND
 
 /* --- options of enabling anticipation in motion-based tracking --- */
-#define PRED_WITH_ODOM
+// #define PRED_WITH_ODOM
 
 /* --- options to priortize feature matching wrt local map --- */
 #ifndef ORB_SLAM_BASELINE
@@ -304,7 +303,7 @@ public:
 
     void AddOdomPlanned(const double & odom_stamp, const cv::Mat & odom_Tcw)
     {
-        assert(odom_Twc.rols == 4 && odom_Twc.cols == 4);
+        assert(odom_Tcw.rows == 4 && odom_Tcw.cols == 4);
         mvOdomPlanned.push_back({odom_stamp, odom_Tcw});
     }
 

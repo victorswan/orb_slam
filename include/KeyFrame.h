@@ -31,6 +31,17 @@
 
 #include <mutex>
 
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/serialization/binary_object.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/shared_ptr.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
+#include <boost/serialization/split_member.hpp>
+
+
 namespace ORB_SLAM2
 {
 
@@ -46,6 +57,7 @@ public:
 
 #ifdef ENABLE_MAP_IO
     // For Map IO only; init keyframe from cv::FileStorage
+    KeyFrame(Map *mMap, ORBVocabulary *mVocabulary, KeyFrameDatabase *mKeyFrameDatabase);
     KeyFrame(cv::FileStorage &fs, Map *mMap, ORBVocabulary *mVocabulary, KeyFrameDatabase *mKeyFrameDatabase);
 #endif
 
@@ -54,6 +66,7 @@ public:
     KeyFrame(const double &timeStamp, const cv::Mat &Tcw,
              const float &fx_, const float &fy_, const float &cx_, const float &cy_, const float &mb_);
 #endif
+
 
     void ExportToYML(cv::FileStorage &fs);
 
@@ -264,7 +277,7 @@ public:
 #endif
 
     // The following variables need to be accessed trough a mutex to be thread safe.
-protected:
+public:
     // SE3 Pose and camera center
     cv::Mat Tcw;
     cv::Mat Twc;
@@ -273,7 +286,7 @@ protected:
     cv::Mat Cw; // Stereo middel point. Only for visualization
 
     // MapPoints associated to keypoints
-    std::vector<MapPoint *> mvpMapPoints;
+    std::vector<MapPoint *> mvpMapPoints;   //#1 need external setting
 
     // BoW
     KeyFrameDatabase *mpKeyFrameDB;
@@ -282,15 +295,15 @@ protected:
     // Grid over the image to speed up feature matching
     std::vector<std::vector<std::vector<size_t>>> mGrid;
 
-    std::map<KeyFrame *, int> mConnectedKeyFrameWeights;
-    std::vector<KeyFrame *> mvpOrderedConnectedKeyFrames;
+    std::map<KeyFrame *, int> mConnectedKeyFrameWeights;   //#2 need external setting
+    std::vector<KeyFrame *> mvpOrderedConnectedKeyFrames;   //#3 need external setting
     std::vector<int> mvOrderedWeights;
 
     // Spanning Tree and Loop Edges
     bool mbFirstConnection;
-    KeyFrame *mpParent;
-    std::set<KeyFrame *> mspChildrens;
-    std::set<KeyFrame *> mspLoopEdges;
+    KeyFrame *mpParent;   //#4 need external setting
+    std::set<KeyFrame *> mspChildrens;   //#5 need external setting
+    std::set<KeyFrame *> mspLoopEdges;   //#6 need external setting
 
     // Bad flags
     bool mbNotErase;
@@ -304,6 +317,260 @@ protected:
     std::mutex mMutexPose;
     std::mutex mMutexConnections;
     std::mutex mMutexFeatures;
+
+private:
+    friend class boost::serialization::access;
+
+    template<class Archive>
+    void saveMat(Archive & ar, const cv::Mat &m) const
+    {
+        bool empty_flag = m.empty();
+        ar << empty_flag;
+
+        if(!empty_flag)
+        {
+            size_t elem_size = m.elemSize();
+            int elem_type = m.type();
+
+            ar << m.cols;
+            ar << m.rows;
+            ar << elem_size;
+            ar << elem_type;
+
+            const size_t data_size = m.cols * m.rows * elem_size;
+            ar << boost::serialization::make_array(m.ptr(), data_size);
+        }
+    }
+
+    template<class Archive>
+    void loadMat(Archive & ar, cv::Mat &m)
+    {
+        bool empty_flag;
+        ar >> empty_flag;
+
+        if(!empty_flag)
+        {
+            int cols, rows;
+            size_t elem_size;
+            int elem_type;
+
+            ar >> cols;
+            ar >> rows;
+            ar >> elem_size;
+            ar >> elem_type;
+
+            m.create(rows, cols, elem_type);
+            size_t data_size = m.cols * m.rows * elem_size;
+            ar & boost::serialization::make_array(m.ptr(), data_size);
+        }
+    }
+
+    template<class Archive, class Type>
+    void saveVector(Archive & ar, const std::vector<Type> & vec) const
+    {
+        int size = vec.size();
+        ar << size;
+
+        std::vector<Type> vec_copy = vec;
+
+        if(size > 0)
+        {
+            ar << boost::serialization::make_binary_object(vec_copy.data(), sizeof(Type) * size);
+        }
+    }
+
+    template<class Archive, class Type>
+    void loadVector(Archive & ar, std::vector<Type> & vec)
+    {
+        int size;
+        ar >> size;
+        vec.resize(size);
+        if(size > 0)
+        {
+            ar >> boost::serialization::make_binary_object(vec.data(), sizeof(Type) * size);
+        }
+    }
+
+    template<class Archive>
+    void save(Archive &ar, unsigned int) const
+    {
+        ar << mnId;
+        ar << mnFrameId;
+
+        ar << mTimeStamp;
+
+        ar << mnGridCols;
+        ar << mnGridRows;
+        ar << mfGridElementWidthInv;
+        ar << mfGridElementHeightInv;
+
+        ar << mnTrackReferenceForFrame;
+        ar << mnFuseTargetForKF;
+
+        ar << mnBALocalForKFCand;
+        ar << mnBALocalForKF;
+        ar << mnBAFixedForKFCand;
+        ar << mnBAFixedForKF;
+
+        ar << mnBALocalCount;
+
+        ar << mnLoopQuery;
+        ar << mnLoopWords;
+        ar << mLoopScore;
+        ar << mnRelocQuery;
+        ar << mnRelocWords;
+        ar << mRelocScore;
+
+        ar << fx;
+        ar << fy;
+        ar << cx;
+        ar << cy;
+        ar << invfx;
+        ar << invfy;
+        ar << mbf;
+        ar << mb;
+        ar << mThDepth;
+
+        int tmp_N = mvpMapPoints.size();
+        ar << tmp_N;
+
+        saveVector(ar, mvKeys);
+        saveVector(ar, mvKeysUn);
+
+        saveVector(ar, mvuRight);
+        saveVector(ar, mvDepth);
+
+        saveMat(ar, mDescriptors);
+
+//        ar << mBowVec;
+//        ar << mFeatVec;
+
+        saveMat(ar, mTcp);
+
+        ar << mnScaleLevels;
+        ar << mfScaleFactor;
+        ar << mfLogScaleFactor;
+        ar << mvScaleFactors;
+        ar << mvLevelSigma2;
+        ar << mvInvLevelSigma2;
+
+        ar << mnMinX;
+        ar << mnMinY;
+        ar << mnMaxX;
+        ar << mnMaxY;
+        saveMat(ar, mK);
+
+        saveMat(ar, Tcw);
+        saveMat(ar, Twc);
+        saveMat(ar, Ow);
+
+        saveMat(ar, Cw);
+
+        ar << mGrid;
+
+        ar << mvOrderedWeights;
+
+        ar << mbFirstConnection;
+
+        ar << mbNotErase;
+        ar << mbToBeErased;
+        ar << mbBad;
+
+        ar << mHalfBaseline;
+    }
+
+    template<class Archive>
+    void load(Archive &ar, unsigned int)
+    {
+        ar >> mnId;
+        ar >> mnFrameId;
+
+        ar >> mTimeStamp;
+
+        ar >> mnGridCols;
+        ar >> mnGridRows;
+        ar >> mfGridElementWidthInv;
+        ar >> mfGridElementHeightInv;
+
+        ar >> mnTrackReferenceForFrame;
+        ar >> mnFuseTargetForKF;
+
+        ar >> mnBALocalForKFCand;
+        ar >> mnBALocalForKF;
+        ar >> mnBAFixedForKFCand;
+        ar >> mnBAFixedForKF;
+
+        ar >> mnBALocalCount;
+
+        ar >> mnLoopQuery;
+        ar >> mnLoopWords;
+        ar >> mLoopScore;
+        ar >> mnRelocQuery;
+        ar >> mnRelocWords;
+        ar >> mRelocScore;
+
+        ar >> fx;
+        ar >> fy;
+        ar >> cx;
+        ar >> cy;
+        ar >> invfx;
+        ar >> invfy;
+        ar >> mbf;
+        ar >> mb;
+        ar >> mThDepth;
+
+        ar >> N;
+
+        loadVector(ar, mvKeys);
+        loadVector(ar, mvKeysUn);
+
+        loadVector(ar, mvuRight);
+        loadVector(ar, mvDepth);
+
+        loadMat(ar, mDescriptors);
+
+//        ar >> mBowVec;
+//        ar >> mFeatVec;
+
+        loadMat(ar, mTcp);
+
+        ar >> mnScaleLevels;
+        ar >> mfScaleFactor;
+        ar >> mfLogScaleFactor;
+        ar >> mvScaleFactors;
+        ar >> mvLevelSigma2;
+        ar >> mvInvLevelSigma2;
+
+        ar >> mnMinX;
+        ar >> mnMinY;
+        ar >> mnMaxX;
+        ar >> mnMaxY;
+        loadMat(ar, mK);
+
+        loadMat(ar, Tcw);
+        loadMat(ar, Twc);
+        loadMat(ar, Ow);
+
+        loadMat(ar, Cw);
+
+        ar >> mGrid;
+
+        ar >> mvOrderedWeights;
+
+        ar >> mbFirstConnection;
+
+        ar >> mbNotErase;
+        ar >> mbToBeErased;
+        ar >> mbBad;
+
+        ar >> mHalfBaseline;
+    }
+
+    BOOST_SERIALIZATION_SPLIT_MEMBER();
+
+public:
+    void saveExtern(boost::archive::binary_oarchive &ar) const;
+    void loadExtern(boost::archive::binary_iarchive &ar, std::map<long unsigned int, ORB_SLAM2::KeyFrame *> &map_ID_2_KF, std::map<long unsigned int, ORB_SLAM2::MapPoint *> &map_ID_2_Pt);
 };
 
 } // namespace ORB_SLAM2
