@@ -1,6 +1,6 @@
 # Good Feature Matching Version of ORB-SLAM2
 
-**Good feature matching** (IROS18, TRO19) is an enhancement module that is designed for feature-based BA SLAM, such as ORB-SLAM2.  The main advantage of good feature matching, as opposed to the conventional batch feature matching, is the better trade-off of performance-efficiency.  
+**Good feature matching** (IROS18, TRO20) is an enhancement module that is designed for feature-based BA SLAM, such as ORB-SLAM2.  The main advantage of good feature matching, as opposed to the conventional batch feature matching, is the better trade-off of performance-efficiency.  
 
 <figure>
   <img src="https://github.com/ivalab/GF_ORB_SLAM/blob/master/batch_script/RMSE_vs_Latency_EuRoC.png" alt="EuRoC" style="width:100%">
