@@ -1,6 +1,6 @@
 # Good Feature Matching Version of ORB-SLAM2
 
-**Good feature matching** (IROS18, TRO19) is an enhancement module that is designed for feature-based BA SLAM, such as ORB-SLAM2.  The main advantage of good feature matching, as opposed to the conventional batch feature matching, is the better trade-off of performance-efficiency.  
+**Good feature matching** (IROS18, TRO20) is an enhancement module that is designed for feature-based BA SLAM, such as ORB-SLAM2.  The main advantage of good feature matching, as opposed to the conventional batch feature matching, is the better trade-off of performance-efficiency.  
 
 <figure>
   <img src="https://github.com/ivalab/GF_ORB_SLAM/blob/master/batch_script/RMSE_vs_Latency_EuRoC.png" alt="EuRoC" style="width:100%">
@@ -15,12 +15,12 @@ alt="SLAM View of MapHash vs. Baseline ORB" width="760" height="320" border="10"
 
 As the central part of autonomous navigation stack developed at Georgia Tech IVALab, GF-ORB-SLAM 2 supports **additional features** as follows:
  - this repo is based on ORB-SLAM2, which supports monocular, stereo and rgb-d visual input;
+ - catkinize (by default; for non-ros usage, check out the **master** branch instead);
  - GPU accelerated FAST detection (uncomment Macro **CUDA_ACC_FAST** in **ORBextractor.h** to enable it);
  - sped-up lazy stereo matching (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in **Frame.h** to enable it; for fisheye lens, uncomment **USE_FISHEYE_DISTORTION** as well);
  - budget awared local BA with Good Graph selection (uncomment Macro **ENABLE_GOOD_GRAPH** in **Optimizer.h** & **ENABLE_ANTICIPATION_IN_GRAPH** in **Frame.h** to enable it; by default the desired path from controller / planner is valid and published to rostopic "/desired_path")
  - map saving & loading modules (uncomment Macro **ENABLE_MAP_IO** in **Frame.h** to enable them)
- - Pose initialization with ChAruco (uncomment Macro **INIT_WITH_ARUCHO** in **Tracking.h** to enable it);
- - catkinize (default; for non-ros usage, check out the master branch)
+ - Pose initialization with ChAruco (uncomment Macro **INIT_WITH_ARUCHO** in **Tracking.h** to enable it) out the master branch)
  - to be included ~~visual inertial fusion~~
 
 ## Build & Run
