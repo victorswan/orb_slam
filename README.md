@@ -62,11 +62,12 @@ If you use features in GF-ORB-SLAM2 at an academic work, please cite the followi
 
 **Good Feature Matching**:
 	
-	@article{zhao2019good,
+	@article{zhao2020tro-gfm,
 	  title={Good Feature Matching: Towards Accurate, Robust VO/VSLAM with Low Latency},
 	  author={Zhao, Yipu and Vela, Patricio A.},
-	  journal={submitted to IEEE Transactions on Robotics},
-	  year={2019}
+	  journal={IEEE Transactions on Robotics},
+	  doi={10.1109/TRO.2020.2964138},
+	  year={2020}
 	}	
 
 	@inproceedings{zhao2018good,
@@ -88,11 +89,11 @@ If you use features in GF-ORB-SLAM2 at an academic work, please cite the followi
 
 **Good Graph Selection**:
 
-	@article{zhao2019graph,
+	@article{zhao2020graph,
 	  title={Good Graph to Optimize: Cost-Effective, Budget-Aware Bundle Adjustment in Visual SLAM},
 	  author={Zhao, Yipu and Smith, Justin S. and Vela, Patricio A.},
 	  journal={submitted to IEEE Transactions on Robotics},
-	  year={2019}
+	  year={2020}
 	} 
 
 ## Contact information
