@@ -26,7 +26,11 @@ As the central part of autonomous navigation stack developed at Georgia Tech IVA
 
 To build GF-ORB-SLAM2, first clone the repo to your catkin workspace
 
-    cd ~/catkin_ws/src && git clone https://github.com/ivalab/gf_orb_slam2.git && git checkout catkin
+    cd ~/catkin_ws/src && git clone https://github.com/ivalab/gf_orb_slam2.git
+
+as well as the config files
+
+    git clone https://github.com/ivalab/ORB_Data.git
 
 Then build dependencies (by default we assume a GPU is available for opencv; otherwise use the non-gpu build cmd in build_dep.sh accordingly)
 
