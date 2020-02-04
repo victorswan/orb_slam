@@ -87,3 +87,5 @@ sudo cmake ..
 sudo make -j4
 sudo cp libgtest.a ../
 
+# last, install gflags
+sudo apt install libgflags-dev

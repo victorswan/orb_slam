@@ -214,7 +214,7 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
 
     mvbOutlier = vector<bool>(N, false);
     mvbCandidate = vector<bool>(N, true);
-    mvbJacobBuilt = vector<bool>(N, false);
+   // mvbJacobBuilt = vector<bool>(N, false);
     mvbGoodFeature = vector<bool>(N, false);
     //
     mvpMatchScore = vector<int>(N, static_cast<int>(999));
