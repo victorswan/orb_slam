@@ -4,29 +4,36 @@ The cost-efficiency of visual SLAM is crucial for target applications in Robotic
 
 1. **Good feature matching** (IROS18, TRO20) is an enhancement module to the front-end of feature-based BA SLAM, such as ORB-SLAM2.  As an efficient variant of active feature matching, good feature matching has much better computation-performance trade-off than conventional batch feature matching.  
 
+*Performance vs. latency evaluation on EuRoC monocular sequences:*
 <figure>
   <img src="https://github.com/ivalab/GF_ORB_SLAM/blob/master/batch_script/RMSE_vs_Latency_EuRoC.png" alt="EuRoC" style="width:100%">
-  <figcaption>Performance vs. latency evaluation on EuRoC monocular sequences (left-cam only)</figcaption>
 </figure>
+
 
 2. **Local map hashing** (ICRA19) is specifically designed for large-scale, long-term VSLAM applications, where the cost of local map related operations could be computation-heavy.  The local map is indexed with a light-weight, robust, and temporally-evolving Multi-Index Hashing method.
 
+
+*Local map hashing vs. ORB-SLAM baseline on New College dataset:*
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=mnIf4PPqGHY
 " target="_blank"><img src="https://github.com/ivalab/gf_orb_slam2/blob/catkin/maphash_demo.png" 
 alt="SLAM View of MapHash vs. Baseline ORB" width="760" height="320" border="10" /></a>
+
 
 3. **Good graph selection** (submitted to TRO) is an enhancement module to the back-end of BA-based SLAM.  It enables fine-grained and timely control of the local BA problem in SLAM back-end: solve large BA when resource is sufficient, while focus on smaller BA under computation/time limit.  Compared with sliding window or covisibily graph, good graph selection has much better computation-performance trade-off.
 
-<a href="http://www.youtube.com/watch?feature=player_embedded&v=mnIf4PPqGHY
-" target="_blank"><img src="https://github.com/ivalab/gf_orb_slam2/blob/catkin/maphash_demo.png" 
-alt="SLAM View of MapHash vs. Baseline ORB" width="760" height="320" border="10" /></a>
+*Full BA vs. subgraph BA on Venice dataset:*
+<figure>
+  <img src="https://github.com/ivalab/gf_orb_slam2/blob/catkin/good_graph_demo.png" alt="Venice" style="width:100%">
+</figure>
+
+
 
 Following **additional features** are also included for practical applications:
- - catkinize (by default; for non-ros usage, check out the **master** branch instead);
- - GPU accelerated FAST detection (uncomment Macro **CUDA_ACC_FAST** in **ORBextractor.h** to enable it);
- - sped-up lazy stereo matching (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in **Frame.h** to enable it; for fisheye lens, uncomment **USE_FISHEYE_DISTORTION** as well);
- - map saving & loading modules (uncomment Macro **ENABLE_MAP_IO** in **Frame.h** to enable them)
- - pose initialization with ChAruco (uncomment Macro **INIT_WITH_ARUCHO** in **Tracking.h** to enable it) out the master branch)
+ - **catkinize** (by default; for non-ros usage, check out the **master** branch instead);
+ - **GPU accelerated FASTdetection** (uncomment Macro **CUDA_ACC_FAST** in **ORBextractor.h** to enable it);
+ - **speed-up stereo matching** (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in **Frame.h** to enable it; for fisheye lens, uncomment **USE_FISHEYE_DISTORTION** as well);
+ - **map saving & loading** (uncomment Macro **ENABLE_MAP_IO** in **Frame.h** to enable them)
+ - **pose initialization** with ChAruco (uncomment Macro **INIT_WITH_ARUCHO** in **Tracking.h** to enable it) out the master branch)
 
 ## Build & Run
 
