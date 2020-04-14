@@ -12,7 +12,10 @@ SET(CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL} -march=native -std=c++
 SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -march=native -std=c++11")
 SET(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -march=native -std=c++11")
 
-FILE(GLOB_RECURSE SLAM_EXAMPLE_HEADERS ${SLAM_P_P_SOURCE_DIR}/include/good_graph_testbed/*.h ${SLAM_P_P_SOURCE_DIR}/include/slam/*.h)
+FILE(GLOB_RECURSE SLAM_EXAMPLE_HEADERS \\
+    ${SLAM_P_P_SOURCE_DIR}/include/good_graph_testbed/*.hpp \\
+    ${SLAM_P_P_SOURCE_DIR}/include/good_graph_testbed/*.h \\
+    ${SLAM_P_P_SOURCE_DIR}/include/slam/*.h)
 
 IF(SLAM_P_P_SHORT_CXSPARSE)
 	ADD_DEFINITIONS(-D__CXSPARSE_SHORT)

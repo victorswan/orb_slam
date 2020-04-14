@@ -72,6 +72,8 @@ public:
 
     size_t n_Vertex_Num() const;
 
+    size_t m_lmk_count;
+
 #ifdef SBA_OPTIMIZER_WANT_DEEP_VERTEX_ACCESS
     CSystemType::_TyConstVertexRef r_Vertex(size_t n_index) const; // returns const reference to a full vertex
     CSystemType::_TyVertexRef r_Vertex(size_t n_index); // returns reference to a full vertex
@@ -107,10 +109,15 @@ public:
 
     //
     double Find_Subgraph(/*const std::vector<size_t> & poses_vtx_, */
-                         const size_t & card_, const size_t & greedy_method_, std::vector<size_t> & reserv_vtx_);
+                         const size_t & card_, const size_t & greedy_method_,
+                         std::vector<size_t> & reserv_vtx_,
+                         double lazier_samp_factor = 6.0);
     //
+    double GetFullSystemLogDet() const;
 
     void Show_Stats() const;
+
+    double GetTotalTime() const;
 
     void resetTime();
 

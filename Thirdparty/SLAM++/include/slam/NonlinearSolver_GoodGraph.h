@@ -45,8 +45,6 @@ extern int n_dummy_param;
 // number of random query in lazier greedy selection
 #define MAX_RANDOM_QUERY_TIME          20 // 2000 // 100 //
 
-#define LAZIER_SAMPLING_FACTOR         6.0 // 3.0 //
-
 /* ---------- updating scheme of cholesky (for logDet estimation) ---------- */
 // incremental cholesky using SLAM++ impl., with single thread only
 #define INCREMENTAL_CHOLESKY_SLAMPP_ST
@@ -209,7 +207,7 @@ protected:
     //
     size_t m_n_iteration_num; /**< @brief number of linear solver iterations */
     double m_f_chi2_time; /**< @brief time spent in calculating chi2 */
-//    double m_f_lambda_time; /**< @brief time spent updating lambda */
+    //    double m_f_lambda_time; /**< @brief time spent updating lambda */
     double m_f_rhs_time; /**< @brief time spent in right-hand-side calculation */
     double m_f_linsolve_time; /**< @brief time spent in luinear solving (Cholesky / Schur) */
     double m_f_norm_time; /**< @brief time spent in norm calculation section */
@@ -390,6 +388,16 @@ public:
         //                if (mNumThreads > 1)
         //                    mThreads = new std::thread[mNumThreads - 1];
 #endif
+    }
+
+
+    double GetTotalTime() const {
+        double f_parallel_time = m_f_lambda_time + m_f_rhs_time;
+        double f_all_time = f_parallel_time + m_f_chi2_time + m_f_linsolve_time -
+                m_f_norm_time + m_f_damping_time + m_f_dampingupd_time + m_f_sysupdate_time +
+                m_f_extra_chol_time + m_f_marginals_time + m_f_incmarginals_time +
+                m_f_pre_time + m_f_schur_time + m_f_query_time + m_f_slice_time + m_f_chol_time + m_f_post_time;
+        return f_all_time;
     }
 
     /**
@@ -651,10 +659,135 @@ public:
 
 
     void Plot3D(const char *p_s_filename) {
-//        this->m_r_system.Plot3D(p_s_filename, plot_quality::plot_Printing);
+        //        this->m_r_system.Plot3D(p_s_filename, plot_quality::plot_Printing);
         this->m_r_system.Plot3D(p_s_filename, 2048, 2048, 10, 3, 7, 1, true, true, 10);
     }
 
+
+    double GetFullSystemLogDet() {
+        m_b_system_dirty = false;
+
+        const size_t n_variables_size = this->m_r_system.n_VertexElement_Num();
+        const size_t n_measurements_size = this->m_r_system.n_EdgeElement_Num();
+        if(n_variables_size > n_measurements_size) {
+            if(n_measurements_size)
+                fprintf(stderr, "warning: the system is underspecified\n");
+            else
+                fprintf(stderr, "warning: the system contains no edges at all: nothing to optimize\n");
+            //return;
+        }
+        if(!n_measurements_size) {
+            printf("func Find_Subgraph: nothing to solve!\n");
+            return -1; // nothing to solve (but no results need to be generated so it's ok)
+        }
+        // can't solve in such conditions
+
+        _ASSERTE(this->m_r_system.b_AllVertices_Covered());
+        // if not all vertices are covered then the system matrix will be rank deficient and this will fail
+        // this triggers typically if solving BA problems with incremental solve each N steps (the "proper"
+        // way is to use CONSISTENCY_MARKER and incremental solve period of SIZE_MAX).
+
+#ifdef __NONLINEAR_SOLVER_LAMBDA_DUMP_DIFFERENCE_MATRICES
+        CUberBlockMatrix lambda_prev = m_lambda;
+#endif // __NONLINEAR_SOLVER_LAMBDA_DUMP_DIFFERENCE_MATRICES
+
+        _TyLambdaOps::Extend_Lambda(this->m_r_system, m_reduction_plan, m_lambda,
+                                    m_n_verts_in_lambda, m_n_edges_in_lambda); // recalculated all the jacobians inside Extend_Lambda()
+        m_v_dx.resize(n_variables_size, 1);
+        m_v_saved_state.resize(n_variables_size, 1);
+        // allocate more memory
+
+        if(!m_b_system_dirty)
+            _TyLambdaOps::Refresh_Lambda(this->m_r_system, m_reduction_plan, m_lambda, 0, m_n_edges_in_lambda); // calculate only for new edges // @todo - but how to mark affected vertices? // simple test if edge id is greater than m_n_edges_in_lambda, the vertex needs to be recalculated
+        else
+            _TyLambdaOps::Refresh_Lambda(this->m_r_system, m_reduction_plan, m_lambda); // calculate for entire system
+        //m_n_verts_in_lambda = this->m_r_system.r_Vertex_Pool().n_Size();
+        //m_n_edges_in_lambda = this->m_r_system.r_Edge_Pool().n_Size(); // not yet, the damping was not applied
+        //m_b_system_dirty = false; // cannot do that yet, the damping was not applied
+        // lambda is (partially) updated, but (partially) without damping - don't give it to m_TR_algorithm as it would quite increase complexity
+
+        // a small damping factor is needed to avoid cholesky failure
+        double f_alpha = 0.001; // m_TR_algorithm.f_InitialDamping(this->m_r_system); // lambda is not ready at this point yet, can only use the edges
+        if(!m_b_system_dirty)
+            Apply_Damping(0, m_n_edges_in_lambda, f_alpha); // calculate only for new edges // t_odo - but how to mark affected vertices? // done inside
+        else
+            Apply_Damping(0, 0, f_alpha); // for the entire system
+
+        m_b_system_dirty = false;
+        m_n_verts_in_lambda = this->m_r_system.r_Vertex_Pool().n_Size();
+        m_n_edges_in_lambda = this->m_r_system.r_Edge_Pool().n_Size(); // right? // yes.
+        _ASSERTE(m_lambda.n_Row_Num() == m_lambda.n_Column_Num() &&
+                 m_lambda.n_BlockColumn_Num() == this->m_r_system.r_Vertex_Pool().n_Size() &&
+                 m_lambda.n_Column_Num() == n_variables_size); // lambda is square, blocks on either side = number of vertices
+        // need to have lambda
+
+        // TODO
+        // verify that the schur ordering aligns with the order of vertex id (0~N-1)
+        // currently we assume that vertex are added in a certain order:
+        // reserved poses first, then comes free poses, then comes landmarks, and fixed poses in the end.
+        // in this case, the reserved index should always start from 0 and being contineous.
+        std::vector<size_t> schur_ordering, new_rcs_vertices;
+        for(size_t i = 0, n = m_lambda.n_BlockColumn_Num(); i < n; ++ i) {
+            size_t n_dim = m_lambda.n_BlockColumn_Column_Num(i);
+            //            if(_TyGOH::b_can_use_simple_ordering) {
+            enum {
+                n_landmark_dim = _TyGOH::n_smallest_vertex_dim,
+                n_pose_dim = _TyGOH::n_greatest_vertex_dim
+            };
+            if(n_dim == n_landmark_dim)
+                schur_ordering.push_back(i); // this will be in the diagonal part
+            else
+                new_rcs_vertices.push_back(i); // this will be in the RCS part
+        }
+        // for all new vertices
+
+        schur_ordering.insert(schur_ordering.begin(),
+                              new_rcs_vertices.begin(), new_rcs_vertices.end());
+        const size_t N = new_rcs_vertices.size();
+        // finalize the SC ordering
+
+        CMatrixOrdering mord_sc;
+        const size_t *p_schur_order = mord_sc.p_InvertOrdering(&schur_ordering.front(),
+                                                               schur_ordering.size());
+        const size_t n_size = schur_ordering.size();
+        // invert the ordering
+
+        CUberBlockMatrix lambda_perm;
+        m_lambda.Permute_UpperTriangular_To(lambda_perm, p_schur_order, n_size, true);
+        // permute lambda
+
+        CUberBlockMatrix SC, minus_Dinv, newU;
+        {
+            CUberBlockMatrix /*newU,*/ newV, newD;
+            CUberBlockMatrix &newA = SC; // will calculate that inplace
+            lambda_perm.SliceTo(newA, 0, N, 0, N, false); // copy!! don't destroy lambda
+            lambda_perm.SliceTo(newU, 0, N, N, n_size, false); // do not share data, will need to output this even after lambda perm perishes
+            lambda_perm.SliceTo(newD, N, n_size, N, n_size, true);
+            newV.TransposeOf(newU);
+            // get the news (could calculate them by addition in case we choose to abandon lambda altogether)
+
+            _ASSERTE(newD.b_BlockDiagonal()); // make sure it is block diagonal
+            // the algorithms below wont work if D isnt a diagonal matrix
+
+            CUberBlockMatrix &minus_newDinv = minus_Dinv;
+            minus_newDinv.InverseOf_Symmteric_FBS<_TyDBlockSizes>(newD); // batch inverse, dont reuse incremental!
+            minus_newDinv.Scale(-1);
+
+            CUberBlockMatrix minus_newU_newDinv, minus_newU_newDinv_newV;
+            minus_newU_newDinv.ProductOf_FBS<_TyUBlockSizes, _TyDBlockSizes>(newU, minus_newDinv);
+            minus_newU_newDinv_newV.ProductOf_FBS<_TyUBlockSizes, _TyVBlockSizes>(minus_newU_newDinv, newV, true);
+
+            CUberBlockMatrix &newSC_ref = newA;
+            minus_newU_newDinv_newV.AddTo_FBS<_TySchurBlockSizes>(newSC_ref);
+            // calculate batch SC
+        }
+        //
+#ifdef DEBUG_PLOTTING
+        SC.Rasterize("sc_orig_00_cams.tga");
+#endif
+
+        return GetLogDet(SC, false);
+    }
 
     /**
      *	@brief good graph building function
@@ -668,7 +801,8 @@ public:
     double Find_Subgraph(/*const std::vector<size_t> & poses_vtx_*/
                          const size_t & card_,
                          const size_t & greedy_method_,
-                         std::vector<size_t> & reserv_pos_) // throw(std::bad_alloc)
+                         std::vector<size_t> & reserv_pos_,
+                         double lazier_samp_factor) // throw(std::bad_alloc)
     {
         _ASSERTE(card_ >= reserv_pos_.back());
 
@@ -919,23 +1053,23 @@ public:
         }
         else if (greedy_method_ == 1) {
             // GreedyMethod::lazierSelection
-            logdet_ = LazierGreedy_Selection(card_, N, SC, reserv_pos_);
+            logdet_ = LazierGreedy_Selection(card_, N, SC, reserv_pos_, static_cast<float>(lazier_samp_factor));
         }
         else if (greedy_method_ == 2) {
             // GreedyMethod::lazierDeletion
-            logdet_ = LazierGreedy_Deletion(card_, N, SC, reserv_pos_);
+            logdet_ = LazierGreedy_Deletion(card_, N, SC, reserv_pos_, static_cast<float>(lazier_samp_factor));
         }
         else {
             // do nothing
         }
-//        else if (greedy_method_ == 3) {
-//            // GreedyMethod::covisSelection
-//            logdet_ = Covis_Selection(card_, N, SC, reserv_pos_);
-//        }
-//        else {
-//            // GreedyMethod::randSelection
-//            logdet_ = Rand_Selection(card_, N, SC, reserv_pos_);
-//        }
+        //        else if (greedy_method_ == 3) {
+        //            // GreedyMethod::covisSelection
+        //            logdet_ = Covis_Selection(card_, N, SC, reserv_pos_);
+        //        }
+        //        else {
+        //            // GreedyMethod::randSelection
+        //            logdet_ = Rand_Selection(card_, N, SC, reserv_pos_);
+        //        }
 
 #if 0 && defined(_DEBUG)
         //SC_tmp = SC;
@@ -1251,19 +1385,28 @@ public:
 
 
     // lazier greedy selection of new nodes
-    double LazierGreedy_Selection(const size_t & card_, const size_t & N, CUberBlockMatrix & SC, std::vector<size_t> & reserv_pos_) {
+    double LazierGreedy_Selection(const size_t & card_, const size_t & N,
+                                  CUberBlockMatrix & SC, std::vector<size_t> & reserv_pos_,
+                                  float lazier_samp_factor) {
         //
         CTimerSampler timer(this->m_timer);
 
         // DEBUG
         //        printf("---- Init logDet = %.03f ----\n", GetLogDet(SC, true));
+        //        printf("---- card_ = %d, N = %d ----\n", card_, N);
 
         // TODO
         // start lazier greedy from here
         _ASSERTE(card_ < N);
         _ASSERTE(SC.n_BlockColumn_Num() == N);
+        _ASSERTE(SC.n_BlockRow_Num() == N);
         // set the size of random subset
-        const size_t szLazierSubset = static_cast<size_t>( float(N) / float(card_) * LAZIER_SAMPLING_FACTOR );
+        const size_t szLazierSubset = static_cast<size_t>( float(N) / float(card_) * lazier_samp_factor );
+        //        size_t szLazierSubset;
+        //        if (card_ == N)
+        //            szLazierSubset = 1;
+        //        else
+        //            szLazierSubset = static_cast<size_t>( float(N) / float(card_) * LAZIER_SAMPLING_FACTOR );
         size_t szActualSubset;
         size_t addIdx;
 
@@ -1272,21 +1415,33 @@ public:
         //        std::set_difference(poses_vtx_.begin(), poses_vtx_.end(),
         //                            reserv_vtx_.begin(), reserv_vtx_.end(),
         //                            std::inserter(vtxPool, vtxPool.begin()));
-        size_t szPool = N; // poses_vtx_.size();
+        //        size_t szPool = N; // poses_vtx_.size();
+        //        // create a query index for fast insert and reject of entries
+        //        arma::mat vtxValid = arma::mat(1, szPool);
+        //        // create a flag array to avoid duplicate visit
+        //        arma::mat vtxVisited = arma::mat(1, szPool);
+        //        for (size_t i=0; i<szPool; ++i) {
+        //            vtxValid.at(0, i) = i;
+        //            vtxVisited.at(0, i) = -1;
+        //        }
+        //        // set thet flag for visited ones
+        //        size_t szReserv = reserv_pos_.back()+1;
+        //        for (size_t i=0; i<szReserv; ++i) {
+        //            //            printf("index to be reserved: %d\n", reserv_pos_[i]);
+        //            vtxVisited.at(0, i) = -99;
+        //        }
+
+        size_t szReserv = reserv_pos_.back()+1;
+        size_t szPool = N-szReserv; // poses_vtx_.size();
         // create a query index for fast insert and reject of entries
         arma::mat vtxValid = arma::mat(1, szPool);
         // create a flag array to avoid duplicate visit
         arma::mat vtxVisited = arma::mat(1, szPool);
-        for (size_t i=0; i<szPool; ++i) {
-            vtxValid.at(0, i) = i;
-            vtxVisited.at(0, i) = -1;
+        for (size_t i=szReserv; i<N; ++i) {
+            vtxValid.at(0, i-szReserv) = i;
+            vtxVisited.at(0, i-szReserv) = -1;
         }
-        // set thet flag for visited ones
-        size_t szReserv = reserv_pos_.back()+1;
-        for (size_t i=0; i<szReserv; ++i) {
-            //            printf("index to be reserved: %d\n", reserv_pos_[i]);
-            vtxVisited.at(0, i) = -99;
-        }
+
         timer.Accum_DiffSample(m_f_pre_time);
 
         //        CMatrixOrdering mord_sc;
@@ -1319,7 +1474,11 @@ public:
             szActualSubset = szLazierSubset < szPool ? szLazierSubset : szPool;
             numHit = 0;
             numRndQue = 0;
-
+#ifdef OBS_DEBUG_VERBOSE
+            for (size_t ii=0; ii<vtxVisited.size(); ++ii)
+                std::cout << vtxValid.at(0,ii) << "/" << vtxVisited.at(0,ii) << ", ";
+            std::cout << std::endl;
+#endif
             while (numHit < szActualSubset) {
                 timer.Accum_DiffSample(m_f_misc_time);
 
@@ -1329,6 +1488,7 @@ public:
                 while (numRndQue < MAX_RANDOM_QUERY_TIME) {
                     j = ( std::rand() % szPool );
                     // check if visited
+                    //                    std::cout << j << ", " << vtxVisited.at(0, j) << std::endl;
                     if (vtxVisited.at(0, j) >= -2 && vtxVisited.at(0, j) < nAdded) {
                         vtxVisited.at(0, j) = nAdded;
                         break ;
@@ -1425,8 +1585,10 @@ public:
                     break ;
                 }
 #else
+                // NOTE
+                // there are some failure cases
                 // append random selected row and column to current matrix
-                //                printf("SC_sub row num = %d, reserv_pos_ sz = %d, nAdded = %d\n", SC_sub.n_BlockColumn_Num(), reserv_pos_.size(), nAdded);
+                //                printf("SC_sub row num = %d/%d, reserv_pos_ sz = %d, nAdded = %d\n", SC_sub.n_Row_Num(), SC_sub.n_BlockColumn_Num(), reserv_pos_.size(), nAdded);
                 _ASSERTE(SC_sub.n_BlockColumn_Num() == nAdded && reserv_pos_.size() == nAdded);
                 SC_tmp = SC_sub;
                 SC_tmp.ExtendTo(nAdded + 1, nAdded + 1);
@@ -1465,10 +1627,11 @@ public:
 #else
                 S_chol.Get_Diagonal(diag_mat, true);
 #endif
+                double curDet = Eigen::log10(diag_mat.array()).sum();
                 //                printf("diag[0] = %.03f\n", diag_mat.array()(0));
                 //                printf("diag[1] = %.03f\n", diag_mat.array()(1));
                 //                printf("diag[2] = %.03f\n", diag_mat.array()(2));
-                double curDet = Eigen::log10(diag_mat.array()).sum();
+                //                printf("curDet = %.03f\n", curDet);
                 timer.Accum_DiffSample(m_f_chol_time);
 #ifdef INCREMENTAL_CHOLESKY_SLAMPP_ST
                 heapSubset.push(StorageSelection(vtxValid.at(0, j), curDet, SC_tmp, S_chol_tmp));
@@ -1512,7 +1675,7 @@ public:
             }
 #else
             if (numRndQue >= MAX_RANDOM_QUERY_TIME || heapSubset.size() == 0) {
-                std::cout << "func runActiveMapMatching: early termination!" << std::endl;
+                std::cout << "func runActiveMapMatching: early termination with numRndQue = " << numRndQue << std::endl;
                 break ;
             }
 #endif
@@ -1568,7 +1731,9 @@ public:
 
 
     // lazier greedy deletion of exisiting nodes
-    double LazierGreedy_Deletion(const size_t & card_, const size_t & N, const CUberBlockMatrix & SC, std::vector<size_t> & reserv_pos_) {
+    double LazierGreedy_Deletion(const size_t & card_, const size_t & N, const CUberBlockMatrix & SC,
+                                 std::vector<size_t> & reserv_pos_,
+                                 double lazier_samp_factor) {
         //
         CTimerSampler timer(this->m_timer);
 
@@ -1593,7 +1758,7 @@ public:
         _ASSERTE(card_ < N);
         _ASSERTE(SC.n_BlockColumn_Num() == N);
         // set the size of random subset
-        const size_t szLazierSubset = static_cast<size_t>( float(N) / float(card_) * LAZIER_SAMPLING_FACTOR );
+        const size_t szLazierSubset = static_cast<size_t>( float(N) / float(card_) * lazier_samp_factor );
         size_t szActualSubset;
         size_t removeIdx;
         std::vector<size_t> rmOrder;
