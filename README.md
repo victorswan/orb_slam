@@ -18,7 +18,7 @@ alt="SLAM View of MapHash vs. Baseline ORB" width="760" height="320" border="10"
 3. **Good graph selection** (submitted to TRO) is an enhancement module to the back-end of BA-based SLAM.  It enables fine-grained and timely control of the local BA problem in SLAM back-end: solve large BA when resource is sufficient, while focus on smaller BA under computation/time limit.  Compared with sliding window or covisibily graph, good graph selection has much better computation-performance trade-off.
 
 <figure>
-  <img src="https://github.com/ivalab/GF_ORB_SLAM/blob/master/good_graph_demo.png.png" alt="Venice" style="width:100%">
+  <img src="https://github.com/ivalab/gf_orb_slam2/blob/catkin/good_graph_demo.png" alt="Venice" style="width:100%">
   <figcaption>Full BA vs. subgraph BA on Venice dataset</figcaption>
 </figure>
 
