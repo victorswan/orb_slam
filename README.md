@@ -29,11 +29,11 @@ alt="SLAM View of MapHash vs. Baseline ORB" width="760" height="320" border="10"
 
 
 Following **additional features** are also included for practical applications:
- - catkinize (by default; for non-ros usage, check out the **master** branch instead);
- - GPU accelerated FAST detection (uncomment Macro **CUDA_ACC_FAST** in **ORBextractor.h** to enable it);
- - sped-up lazy stereo matching (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in **Frame.h** to enable it; for fisheye lens, uncomment **USE_FISHEYE_DISTORTION** as well);
- - map saving & loading modules (uncomment Macro **ENABLE_MAP_IO** in **Frame.h** to enable them)
- - pose initialization with ChAruco (uncomment Macro **INIT_WITH_ARUCHO** in **Tracking.h** to enable it) out the master branch)
+ - **catkinize** (by default; for non-ros usage, check out the **master** branch instead);
+ - **GPU accelerated FASTdetection** (uncomment Macro **CUDA_ACC_FAST** in **ORBextractor.h** to enable it);
+ - **speed-up stereo matching** (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in **Frame.h** to enable it; for fisheye lens, uncomment **USE_FISHEYE_DISTORTION** as well);
+ - **map saving & loading** (uncomment Macro **ENABLE_MAP_IO** in **Frame.h** to enable them)
+ - **pose initialization** with ChAruco (uncomment Macro **INIT_WITH_ARUCHO** in **Tracking.h** to enable it) out the master branch)
 
 ## Build & Run
 
