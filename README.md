@@ -69,9 +69,7 @@ To run GF-ORB-SLAM2 on public benchmarks, please refer to batch evaluation scrip
 
 or follow the example calls at **rosrun_cmd.md** for your own sensor / sequence. 
 
-Similar to original ORB-SLAM2, the camera parameters shall be provided in yaml format.  Some example configurations for public benchmarks are available by cloning the following repo and place it at the same catkin workspace as GF-ORB-SLAM2
-
-    cd ~/catkin_ws/src && git clone https://github.com/ivalab/ORB_Data.git
+Similar to original ORB-SLAM2, the camera parameters shall be provided in yaml format.  Some example configurations for public benchmarks are available at ORB_Data we just cloned.
 
 ## References
 
