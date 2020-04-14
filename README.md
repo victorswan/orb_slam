@@ -1,27 +1,32 @@
-# Good Feature Matching Version of ORB-SLAM2
+# A cost-efficient, heavily-modified ORB-SLAM2
 
-**Good feature matching** (IROS18, TRO20) is an enhancement module that is designed for feature-based BA SLAM, such as ORB-SLAM2.  The main advantage of good feature matching, as opposed to the conventional batch feature matching, is the better trade-off of performance-efficiency.  
+The cost-efficiency of visual SLAM is crucial for target applications in Robotics and VR/AR.  One principal enforced in this project is to persue better computation-performance trade-off in both front-end and back-end of visual SLAM.  To that end, three major algorithmic innovations are integrated to ORB-SLAM 2:
+
+1. **Good feature matching** (IROS18, TRO20) is an enhancement module to the front-end of feature-based BA SLAM, such as ORB-SLAM2.  As an efficient variant of active feature matching, good feature matching has much better computation-performance trade-off than conventional batch feature matching.  
 
 <figure>
   <img src="https://github.com/ivalab/GF_ORB_SLAM/blob/master/batch_script/RMSE_vs_Latency_EuRoC.png" alt="EuRoC" style="width:100%">
   <figcaption>Performance vs. latency evaluation on EuRoC monocular sequences (left-cam only)</figcaption>
 </figure>
 
-Compared with the previous version of [GF](https://github.com/ivalab/GF_ORB_SLAM), we also introduce **Map Hashing** (ICRA19), which is designed to bound the cost of lcoal map related operations in long-term, large-scale VSLAM.  
+2. **Local map hashing** (ICRA19) is specifically designed for large-scale, long-term VSLAM applications, where the cost of local map related operations could be computation-heavy.  The local map is indexed with a light-weight, robust, and temporally-evolving Multi-Index Hashing method.
 
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=mnIf4PPqGHY
 " target="_blank"><img src="https://github.com/ivalab/gf_orb_slam2/blob/catkin/maphash_demo.png" 
 alt="SLAM View of MapHash vs. Baseline ORB" width="760" height="320" border="10" /></a>
 
-As the central part of autonomous navigation stack developed at Georgia Tech IVALab, GF-ORB-SLAM 2 supports **additional features** as follows:
- - this repo is based on ORB-SLAM2, which supports monocular, stereo and rgb-d visual input;
+3. **Good graph selection** (submitted to TRO) is an enhancement module to the back-end of BA-based SLAM.  It enables fine-grained and timely control of the local BA problem in SLAM back-end: solve large BA when resource is sufficient, while focus on smaller BA under computation/time limit.  Compared with sliding window or covisibily graph, good graph selection has much better computation-performance trade-off.
+
+<a href="http://www.youtube.com/watch?feature=player_embedded&v=mnIf4PPqGHY
+" target="_blank"><img src="https://github.com/ivalab/gf_orb_slam2/blob/catkin/maphash_demo.png" 
+alt="SLAM View of MapHash vs. Baseline ORB" width="760" height="320" border="10" /></a>
+
+Following **additional features** are also included for practical applications:
  - catkinize (by default; for non-ros usage, check out the **master** branch instead);
  - GPU accelerated FAST detection (uncomment Macro **CUDA_ACC_FAST** in **ORBextractor.h** to enable it);
  - sped-up lazy stereo matching (uncomment Macro **ALTER_STEREO_MATCHING** & **DELAYED_STEREO_MATCHING** in **Frame.h** to enable it; for fisheye lens, uncomment **USE_FISHEYE_DISTORTION** as well);
- - budget awared local BA with Good Graph selection (uncomment Macro **ENABLE_GOOD_GRAPH** in **Optimizer.h** & **ENABLE_ANTICIPATION_IN_GRAPH** in **Frame.h** to enable it; by default the desired path from controller / planner is valid and published to rostopic "/desired_path")
  - map saving & loading modules (uncomment Macro **ENABLE_MAP_IO** in **Frame.h** to enable them)
- - Pose initialization with ChAruco (uncomment Macro **INIT_WITH_ARUCHO** in **Tracking.h** to enable it) out the master branch)
- - to be included ~~visual inertial fusion~~
+ - pose initialization with ChAruco (uncomment Macro **INIT_WITH_ARUCHO** in **Tracking.h** to enable it) out the master branch)
 
 ## Build & Run
 
@@ -86,11 +91,10 @@ If you use features in GF-ORB-SLAM2 at an academic work, please cite the followi
 
 **Good Graph Selection**:
 
-	@article{zhao2020graph,
+	@article{zhao2020tro-gg,
 	  title={Good Graph to Optimize: Cost-Effective, Budget-Aware Bundle Adjustment in Visual SLAM},
 	  author={Zhao, Yipu and Smith, Justin S. and Vela, Patricio A.},
-	  journal={submitted to IEEE Transactions on Robotics},
-	  year={2020}
+	  journal={submitted to IEEE Transactions on Robotics}
 	} 
 
 ## Contact information
