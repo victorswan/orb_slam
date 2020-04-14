@@ -176,7 +176,9 @@ private:
 
 CBAOptimizer::CBAOptimizer(bool b_verbose, bool b_use_schur) // throw(srd::bad_alloc)
     :m_p_optimizer(new CBAOptimizerCore(b_verbose, b_use_schur))
-{}
+{
+    m_lmk_count = 0;
+}
 
 CBAOptimizer::~CBAOptimizer()
 {
@@ -231,9 +233,14 @@ void CBAOptimizer::Optimize(size_t n_max_iteration_num /*= 5*/, double f_min_dx_
     m_p_optimizer->r_Solver().Optimize(n_max_iteration_num, f_min_dx_norm);
 }
 
-double CBAOptimizer::Find_Subgraph(const size_t & card_, const size_t & greedy_method_, std::vector<size_t> & reserv_vtx_) // throw(srd::bad_alloc, std::runtime_error)
+double CBAOptimizer::Find_Subgraph(const size_t & card_, const size_t & greedy_method_,
+                                   std::vector<size_t> & reserv_vtx_, double lazier_samp_factor) // throw(srd::bad_alloc, std::runtime_error)
 {
-    return m_p_optimizer->r_Solver().Find_Subgraph(card_, greedy_method_, reserv_vtx_);
+    return m_p_optimizer->r_Solver().Find_Subgraph(card_, greedy_method_, reserv_vtx_, lazier_samp_factor);
+}
+
+double CBAOptimizer::GetFullSystemLogDet() const {
+    return m_p_optimizer->r_Solver().GetFullSystemLogDet();
 }
 
 void CBAOptimizer::Plot3D(const char *p_s_filename) {
@@ -249,6 +256,7 @@ void CBAOptimizer::resetTime() {
 void CBAOptimizer::Add_XYZVertex(size_t n_vertex_id, const Eigen::Vector3d &v_position) // throw(srd::bad_alloc)
 {
     m_p_optimizer->r_System().r_Get_Vertex<CVertexXYZ>(n_vertex_id, v_position);
+    m_lmk_count ++;
 }
 
 void CBAOptimizer::Add_XYZVertex_Fixed(size_t n_vertex_id, const Eigen::Vector3d &v_position) // throw(srd::bad_alloc)
@@ -325,6 +333,14 @@ void CBAOptimizer::Show_Stats() const
     m_p_optimizer->r_Solver().Dump();
 }
 
+//
+double CBAOptimizer::GetTotalTime() const
+{
+    return m_p_optimizer->r_Solver().GetTotalTime();
+}
+
+
+//
 void CBAOptimizer::Dump_TimeLog(double & m_f_lambda_time, double & m_f_pre_time, double & m_f_schur_time, double & m_f_query_time,
                                 double & m_f_slice_time, double & m_f_chol_time, double & m_f_post_time) {
     //
