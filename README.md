@@ -37,19 +37,19 @@ Following **additional features** are also included for practical applications:
 
 ## Build & Run
 
-To build GF-ORB-SLAM2, first clone the repo to your catkin workspace
+To build GF-ORB-SLAM2, first clone the repo to your local folder
 
-    cd ~/catkin_ws/src && git clone https://github.com/ivalab/gf_orb_slam2.git && cd gf_orb_slam2 && git checkout master
+    git clone https://github.com/ivalab/gf_orb_slam2.git && cd gf_orb_slam2 && git checkout master
 
 as well as the config files
 
-    cd ~/catkin_ws/src && git clone https://github.com/ivalab/ORB_Data.git
+    cd .. && git clone https://github.com/ivalab/ORB_Data.git
 
 Then build dependencies (by default we assume a GPU is available for opencv; otherwise use the non-gpu build cmd in build_dep.sh accordingly)
 
     cd gf_orb_slam2 && ./build_dep.sh && ./build_supports.sh
 
-Now build the GF-ORB-SLAM2 package with GPU
+Now build the GF-ORB-SLAM2 package
 
     ./build.sh
 
@@ -61,9 +61,7 @@ To run GF-ORB-SLAM2 on public benchmarks, please refer to batch evaluation scrip
 
     batch_script
 
-Similar to original ORB-SLAM2, the camera parameters shall be provided in yaml format.  Some example configurations for public benchmarks are available by cloning the following repo and place it at the same dir as GF-ORB-SLAM2
-
-    git clone https://github.com/ivalab/ORB_Data.git
+Similar to original ORB-SLAM2, the camera parameters shall be provided in yaml format.  Some example configurations for public benchmarks are available at ORB_Data folder we just cloned.
 
 ## References
 
