@@ -4,7 +4,7 @@ The cost-efficiency of visual SLAM is crucial for target applications in Robotic
 
 1. **Good feature matching** (IROS18, TRO20) is an enhancement module to the front-end of feature-based BA SLAM, such as ORB-SLAM2.  As an efficient variant of active feature matching, good feature matching has much better computation-performance trade-off than conventional batch feature matching.  
 
-Performance vs. latency evaluation on EuRoC monocular sequences:
+*Performance vs. latency evaluation on EuRoC monocular sequences:*
 <figure>
   <img src="https://github.com/ivalab/GF_ORB_SLAM/blob/master/batch_script/RMSE_vs_Latency_EuRoC.png" alt="EuRoC" style="width:100%">
 </figure>
@@ -13,7 +13,7 @@ Performance vs. latency evaluation on EuRoC monocular sequences:
 2. **Local map hashing** (ICRA19) is specifically designed for large-scale, long-term VSLAM applications, where the cost of local map related operations could be computation-heavy.  The local map is indexed with a light-weight, robust, and temporally-evolving Multi-Index Hashing method.
 
 
-Local map hashing vs. ORB-SLAM baseline on New College dataset:
+*Local map hashing vs. ORB-SLAM baseline on New College dataset:*
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=mnIf4PPqGHY
 " target="_blank"><img src="https://github.com/ivalab/gf_orb_slam2/blob/catkin/maphash_demo.png" 
 alt="SLAM View of MapHash vs. Baseline ORB" width="760" height="320" border="10" /></a>
@@ -21,7 +21,7 @@ alt="SLAM View of MapHash vs. Baseline ORB" width="760" height="320" border="10"
 
 3. **Good graph selection** (submitted to TRO) is an enhancement module to the back-end of BA-based SLAM.  It enables fine-grained and timely control of the local BA problem in SLAM back-end: solve large BA when resource is sufficient, while focus on smaller BA under computation/time limit.  Compared with sliding window or covisibily graph, good graph selection has much better computation-performance trade-off.
 
-Full BA vs. subgraph BA on Venice dataset:
+*Full BA vs. subgraph BA on Venice dataset:*
 <figure>
   <img src="https://github.com/ivalab/gf_orb_slam2/blob/catkin/good_graph_demo.png" alt="Venice" style="width:100%">
 </figure>
