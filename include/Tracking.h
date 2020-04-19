@@ -89,7 +89,7 @@ using namespace Eigen;
 // https://github.gatech.edu/ivabots/trajectory_state_predictor
 // Otherwise, you might write your own predictor by grabbing output from the controller
 //
-// #define ENABLE_PLANNER_PREDICTION
+#define ENABLE_PLANNER_PREDICTION
 
 #ifdef ENABLE_PLANNER_PREDICTION
   #include <trajectory_state_predictor/trajectory_state_predictor.h>
