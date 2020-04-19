@@ -13,7 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
     tf2_ros
     geometry_msgs
     # for closed-loop evaluation of Good Graph only
-    # trajectory_state_predictor
+    trajectory_state_predictor
 )
 
 message("ROS version = " $ENV{ROS_DISTRO})

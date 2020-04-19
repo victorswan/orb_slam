@@ -65,11 +65,13 @@ We recommend converting the ORB vocabulary to binary format, by calling
 
 ### Open-loop Evaluation
 
-To run GF-ORB-SLAM2 on public benchmarks, please refer to batch evaluation scripts at folder 
+To run GF-ORB-SLAM2 on open-loop, e.g., as a standalone running on public benchmarks, make sure the closed-loop macro `ENABLE_PLANNER_PREDICTION` at [include/Tracking.h](https://github.com/ivalab/gf_orb_slam2/tree/catkin/include/Tracking.h#L92) is commented out:
 
-    batch_script
+    // #define ENABLE_PLANNER_PREDICTION
 
-or follow the example calls at **rosrun_cmd.md** for your own sensor / sequence.
+and refer to batch evaluation scripts at folder [batch_script](https://github.com/ivalab/gf_orb_slam2/tree/catkin/batch_scripts) as examples.
+
+You could also follow the example calls at **rosrun_cmd.md** for your own sensor / sequence.
 
 Similar to original ORB-SLAM2, the camera parameters shall be provided in yaml format.  Some example configurations for public benchmarks are available at `ORB_Data` we just cloned.
 
