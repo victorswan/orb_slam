@@ -1,3 +1,5 @@
+![](https://github.com/ivalab/demo_gif/blob/master/office_slam_demo.gif)
+
 # A cost-efficient, heavily-modified ORB-SLAM2
 
 The cost-efficiency of visual SLAM is crucial for target applications in Robotics and VR/AR.  One principal enforced in this project is to persue better computation-performance trade-off in both front-end and back-end of visual SLAM.  To that end, three major algorithmic innovations are integrated to ORB-SLAM 2:
