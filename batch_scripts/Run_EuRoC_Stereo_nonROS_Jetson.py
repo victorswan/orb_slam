@@ -7,7 +7,7 @@ import signal
 
 SeqNameList = ['MH_01_easy', 'MH_02_easy', 'MH_03_medium', 'MH_04_difficult', 'MH_05_difficult', 'V1_01_easy', 'V1_02_medium', 'V1_03_difficult', 'V2_01_easy', 'V2_02_medium', 'V2_03_difficult'];
 # SeqNameList = ['MH_01_easy', 'V2_02_medium', 'MH_05_difficult'];
-# SeqNameList = ['V2_02_medium', 'MH_05_difficult'];
+# SeqNameList = ['MH_02_easy'];
 
 # Note
 # when testing with pre-compute FAST, keep in mind that the detection results 
@@ -64,13 +64,13 @@ for pi, rate in enumerate(Playback_Rate_List):
             for sn, sname in enumerate(SeqNameList):
                 
                 subprocess.call('clear all', shell=True)
-                print bcolors.ALERT + "==========================e==========================================" + bcolors.ENDC
+                print bcolors.ALERT + "====================================================================" + bcolors.ENDC
 
                 SeqName = SeqNameList[sn]
                 print bcolors.ALERT + "Round: " + str(iteration + 1) + "; Seq: " + SeqName
 
-                File_Setting = '../../ORB_Data/EuRoC_yaml/EuRoC_stereo_lmk800.yaml'
-                # File_Setting = '../../ORB_Data/EuRoC_yaml/EuRoC_stereo_lmk800_lvl3.yaml'
+                # File_Setting = '../../ORB_Data/EuRoC_yaml/EuRoC_stereo_lmk800.yaml'
+                File_Setting = '../../ORB_Data/EuRoC_yaml/EuRoC_stereo_lmk800_lvl3.yaml'
 
                 # File_Vocab   = '../../ORB_Data/ORBvoc.txt'
                 File_Vocab  = '../../ORB_Data/ORBvoc.bin'
@@ -102,7 +102,7 @@ for pi, rate in enumerate(Playback_Rate_List):
                     + '--constr_per_frame ' + str(int(num_gf)*2) + ' ' \
                     + '--budget_per_frame ' + str(int(50/rate + 0.5)));
 
-                # make dir for detection I/O
+                # # make dir for detection I/O
                 # cmd_mkdir = 'mkdir ' + Path_Image + '/cam0/kpt'
                 # print bcolors.WARNING + "cmd_mkdir: \n"  + cmd_mkdir  + bcolors.ENDC
                 # proc_mkdir = subprocess.call(cmd_mkdir, shell=True)
