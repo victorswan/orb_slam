@@ -46,7 +46,7 @@ DEFINE_uint64(constr_per_frame, 1600,   "Max number of constraints from a mono/s
 DEFINE_double(time_start,       0,      "Offset of first frame, in sec");
 DEFINE_double(time_duration,    999,    "Duration to last frame, in sec");
 DEFINE_double(budget_per_frame, 30,     "Total amount of time to process a frame, in ms");
-DEFINE_bool(do_viz,             false,   "Visualize real-time SLAM or not");
+DEFINE_bool(do_viz,             false,  "Visualize real-time SLAM or not");
 
 // comparison, not case sensitive.
 bool compareTimestamp (const std::string& first, const std::string& second)
@@ -239,12 +239,12 @@ int main(int argc, char **argv) {
         std::chrono::monotonic_clock::time_point t2 = std::chrono::monotonic_clock::now();
 #endif
 
-        //#ifdef ENABLE_DETECTION_IO
+        // #ifdef ENABLE_DETECTION_IO
         //        // Save feature detection results to file
         //        std::string strDetectLeft = FLAGS_path_to_sequence + "/cam0/kpt/" + std::to_string(vTimeStamp[ni]) + ".yml";
         //        cout << "path to save kpt file: " << strDetectLeft << endl;
         //        SLAM.mpTracker->SaveKeyPoints(strDetectLeft);
-        //#endif
+        // #endif
 
         double ttrack = std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
 
