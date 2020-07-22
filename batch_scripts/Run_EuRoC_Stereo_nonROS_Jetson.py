@@ -5,17 +5,16 @@ import subprocess
 import time
 import signal
 
-# SeqNameList = ['MH_01_easy', 'MH_02_easy', 'MH_03_medium', 'MH_04_difficult', 'MH_05_difficult', 'V1_01_easy', 'V1_02_medium', 'V1_03_difficult', 'V2_01_easy', 'V2_02_medium', 'V2_03_difficult'];
+SeqNameList = ['MH_01_easy', 'MH_02_easy', 'MH_03_medium', 'MH_04_difficult', 'MH_05_difficult', 'V1_01_easy', 'V1_02_medium', 'V1_03_difficult', 'V2_01_easy', 'V2_02_medium', 'V2_03_difficult'];
 # SeqNameList = ['MH_01_easy', 'V2_02_medium', 'MH_05_difficult'];
-SeqNameList = ['MH_01_easy', 'MH_04_difficult', 'MH_05_difficult'];
 
 # Note
 # when testing with pre-compute FAST, keep in mind that the detection results 
 # of baseline ORB and GF are different: ORB detection is from rectified image,
 # while GF detection is from distorted raw image.
 
-Result_root = '/mnt/DATA/tmp/EuRoC/GF_GGraph_Stereo_preP_Speedx'
-# Result_root = '/mnt/DATA/tmp/EuRoC/GF_SWF_Stereo_preP_Speedx'
+# Result_root = '/mnt/DATA/tmp/EuRoC/GF_GGraph_Stereo_preP_Speedx'
+Result_root = '/mnt/DATA/tmp/EuRoC/GF_SWF_Stereo_preP_Speedx'
 # Result_root = '/mnt/DATA/tmp/EuRoC/GF_Covis_Stereo_preP_Speedx'
 # Result_root = '/mnt/DATA/tmp/EuRoC/GF_BaseBA_Stereo_preP_Speedx'
 

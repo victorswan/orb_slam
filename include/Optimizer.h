@@ -34,9 +34,9 @@
 // #define DEBUG_VERBOSE
 
 // good graph switch macro
-#define ENABLE_GOOD_GRAPH
+// #define ENABLE_GOOD_GRAPH
 // reference methods to compare against good graph
-// #define ENABLE_SLIDING_WINDOW_FILTER
+#define ENABLE_SLIDING_WINDOW_FILTER
 // #define ENABLE_COVIS_GRAPH
 
 // number of free KF in local BA to trigger good graph
