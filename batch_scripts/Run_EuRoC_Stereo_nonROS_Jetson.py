@@ -14,8 +14,8 @@ SeqNameList = ['MH_01_easy', 'MH_02_easy', 'MH_03_medium', 'MH_04_difficult', 'M
 # while GF detection is from distorted raw image.
 
 # Result_root = '/mnt/DATA/tmp/EuRoC/GF_GGraph_Stereo_preP_Speedx'
-Result_root = '/mnt/DATA/tmp/EuRoC/GF_SWF_Stereo_preP_Speedx'
-# Result_root = '/mnt/DATA/tmp/EuRoC/GF_Covis_Stereo_preP_Speedx'
+# Result_root = '/mnt/DATA/tmp/EuRoC/GF_SWF_Stereo_preP_Speedx'
+Result_root = '/mnt/DATA/tmp/EuRoC/GF_Covis_Stereo_preP_Speedx'
 # Result_root = '/mnt/DATA/tmp/EuRoC/GF_BaseBA_Stereo_preP_Speedx'
 
 # Result_root = '/mnt/DATA/tmp/EuRoC/GF_GGraph_Stereo_Speedx'
