@@ -50,7 +50,7 @@
 
 
 // For FAST keypoints reuse
-#define ENABLE_DETECTION_IO
+// #define ENABLE_DETECTION_IO
 
 
 // For map reuse and update
@@ -58,7 +58,7 @@
 
 
 // For anticipation in good graph
-// #define ENABLE_ANTICIPATION_IN_GRAPH
+#define ENABLE_ANTICIPATION_IN_GRAPH
 
 
 #ifdef ENABLE_ANTICIPATION_IN_GRAPH
