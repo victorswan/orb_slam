@@ -48,10 +48,11 @@ if ($ENV{ROS_DISTRO} STREQUAL "indigo")
      set( OpenCV_DIR /opt/opencv2/share/OpenCV )
      find_package(OpenCV 2.4.13 REQUIRED core ocl)
 elseif ($ENV{ROS_DISTRO} STREQUAL "kinetic")
-     set( OpenCV_DIR /opt/opencv3/share/OpenCV )
-     find_package(OpenCV 3.4.1 REQUIRED
-                PATHS /opt/opencv3
-                NO_DEFAULT_PATH)
+     find_package(OpenCV REQUIRED)
+#     set( OpenCV_DIR /opt/opencv3/share/OpenCV )
+#     find_package(OpenCV 3.4.1 REQUIRED
+#                PATHS /opt/opencv3
+#                NO_DEFAULT_PATH)
 endif()
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
