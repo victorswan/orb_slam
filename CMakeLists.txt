@@ -14,6 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
     geometry_msgs
     # for closed-loop evaluation of Good Graph only
     trajectory_state_predictor
+    # for sparse features
+    sparse_stereo_msgs
 )
 
 message("ROS version = " $ENV{ROS_DISTRO})
@@ -365,6 +367,15 @@ add_executable(Stereo Examples/ROS/GF_ORB_SLAM2/src/ros_stereo.cc)
     # src/path_smoothing_ros/cubic_spline_interpolator.cpp)
 
 target_link_libraries(Stereo
+${LIBS}
+${catkin_LIBRARIES}
+${PROJECT_NAME}
+)
+
+# Node for stereo camera with features published
+add_executable(StereoFeatures Examples/ROS/GF_ORB_SLAM2/src/ros_stereo_features_pub.cc)
+
+target_link_libraries(StereoFeatures
 ${LIBS}
 ${catkin_LIBRARIES}
 ${PROJECT_NAME}

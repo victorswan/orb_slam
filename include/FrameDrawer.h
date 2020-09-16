@@ -44,6 +44,9 @@ public:
     // Update info from the last processed frame.
     void Update(Tracking *pTracker);
 
+    // Obtain the tracked points
+    void GrabTrackedPoints(std::vector<cv::KeyPoint>& imgPts_l, std::vector<float>& depth, std::vector<long unsigned int>& ids);
+
     // Draw last processed frame.
     cv::Mat DrawFrame();
 
@@ -55,11 +58,14 @@ protected:
     cv::Mat mIm;
     int N;
     vector<cv::KeyPoint> mvCurrentKeys;
+    vector<float> mvDepth;
+    vector<long unsigned int> mvIds;
     vector<bool> mvbMap, mvbVO;
     bool mbOnlyTracking;
     int mnTracked, mnTrackedVO;
     vector<cv::KeyPoint> mvIniKeys;
     vector<int> mvIniMatches;
+    vector<float> mvIniDepth;
     int mState;
 
     Map *mpMap;

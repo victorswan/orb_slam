@@ -162,19 +162,108 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
     cv::putText(imText, s.str(), cv::Point(5, imText.rows - 5), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255), 1, 8);
 }
 
+void FrameDrawer::GrabTrackedPoints(std::vector<cv::KeyPoint>& imgPts_l, std::vector<float>& depth, std::vector<long unsigned int>& ids)
+{
+    vector<cv::KeyPoint> vIniKeys;     // Initialization: KeyPoints in reference frame
+    vector<float> vIniDepth;
+    vector<int> vMatches;              // Initialization: correspondeces with reference keypoints
+    vector<cv::KeyPoint> vCurrentKeys; // KeyPoints in current frame
+    vector<float> vCurrentDepth;
+    vector<long unsigned int> vCurrentIds;
+    vector<bool> vbVO, vbMap;          // Tracked MapPoints in current frame
+    int state;                         // Tracking state
+
+    //Copy variables within scoped mutex
+    {
+        unique_lock<mutex> lock(mMutex);
+        state = mState;
+        if (mState == Tracking::SYSTEM_NOT_READY)
+            mState = Tracking::NO_IMAGES_YET;
+
+        if (mState == Tracking::NOT_INITIALIZED)
+        {
+            vCurrentKeys = mvCurrentKeys;
+            vIniKeys = mvIniKeys;
+            vCurrentDepth = mvIniDepth;
+            vMatches = mvIniMatches;
+        }
+        else if (mState == Tracking::OK)
+        {
+            vCurrentKeys = mvCurrentKeys;
+            vCurrentDepth = mvDepth;
+            vCurrentIds = mvIds;
+            vbVO = mvbVO;
+            vbMap = mvbMap;
+        }
+        else if (mState == Tracking::LOST)
+        {
+            vCurrentKeys = mvCurrentKeys;
+            vCurrentDepth = mvDepth;
+        }
+    } // destroy scoped mutex -> release mutex
+
+    if (state == Tracking::NOT_INITIALIZED) //INITIALIZING
+    {
+        for (unsigned int i = 0; i < vMatches.size(); i++)
+        {
+            if (vMatches[i] >= 0)
+            {
+                if(vCurrentDepth[vMatches[i]] > 0)
+                {
+                    imgPts_l.push_back(vCurrentKeys[vMatches[i]]);
+                    depth.push_back(vCurrentDepth[vMatches[i]]);
+                }
+            }
+        }
+    }
+    else if (state == Tracking::OK) //TRACKING
+    {
+        const float r = 5;
+        const int n = vCurrentKeys.size();
+        for (int i = 0; i < n; i++)
+        {
+            if (vbVO[i] || vbMap[i])
+            {
+                // This is a match to a MapPoint in the map
+                if (vbMap[i])
+                {
+                    if(vCurrentDepth[i] > 0)
+                    {
+                        imgPts_l.push_back(vCurrentKeys[i]);
+                        depth.push_back(vCurrentDepth[i]);
+                        ids.push_back(vCurrentIds[i]);
+                    }
+                }
+                else // This is match to a "visual odometry" MapPoint created in the last frame
+                {
+                    if(vCurrentDepth[i] > 0)
+                    {
+                        imgPts_l.push_back(vCurrentKeys[i]);
+                        depth.push_back(vCurrentDepth[i]);
+                        ids.push_back(vCurrentIds[i]);
+                    }
+                }
+            }
+        }
+    }
+}
+
 void FrameDrawer::Update(Tracking *pTracker)
 {
     unique_lock<mutex> lock(mMutex);
     pTracker->mImGray.copyTo(mIm);
     mvCurrentKeys = pTracker->mCurrentFrame.mvKeys;
+    mvDepth = pTracker->mCurrentFrame.mvDepth;
     N = mvCurrentKeys.size();
     mvbVO = vector<bool>(N, false);
     mvbMap = vector<bool>(N, false);
     mbOnlyTracking = pTracker->mbOnlyTracking;
+    mvIds = vector<long unsigned int>(N, 0);
 
     if (pTracker->mLastProcessedState == Tracking::NOT_INITIALIZED)
     {
         mvIniKeys = pTracker->mInitialFrame.mvKeys;
+        mvIniDepth = pTracker->mInitialFrame.mvDepth;
         mvIniMatches = pTracker->mvIniMatches;
     }
     else if (pTracker->mLastProcessedState == Tracking::OK)
@@ -186,6 +275,7 @@ void FrameDrawer::Update(Tracking *pTracker)
             {
                 if (!pTracker->mCurrentFrame.mvbOutlier[i])
                 {
+                    mvIds[i] = pMP->mnId;
                     if (pMP->Observations() > 0)
                         mvbMap[i] = true;
                     else
