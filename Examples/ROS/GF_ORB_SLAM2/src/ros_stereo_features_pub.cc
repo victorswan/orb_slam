@@ -398,41 +398,85 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
     // ROS_INFO("Image Transmision Latency: %.03f sec; Total Tracking Latency: %.03f sec", latency_trans, latency_total);
     ROS_INFO("Pose Tracking Latency: %.03f sec", latency_total - latency_trans);
 
-
     // Obtain the tracked points
     std::vector<cv::KeyPoint> stereo_pt_l;
     std::vector<float> stereo_pt_depth;
     std::vector<long unsigned int> stereo_pt_id;
-    mpSLAM->mpFrameDrawer->GrabTrackedPoints(stereo_pt_l, stereo_pt_depth, stereo_pt_id);
-    //         stereo_pt_l = SLAM->GetTrackedKeyPointsUn();
 
     sparse_stereo_msgs::TrackedPointList tracked_points;
     tracked_points.header = msgLeft->header;
-    for(size_t i = 0; i < stereo_pt_id.size(); i++)
-    {
-        bool repeated = false;
-        for(size_t j = 0; j < stereo_pt_id.size(); j++)
-        {
-            if(i != j && stereo_pt_id[i] == stereo_pt_id[j])
-            {
-    //                     ROS_INFO_STREAM("Repeated: " << stereo_pt_id[i] << ", iu: " << stereo_pt_l[i].pt.x << ", iv: " << stereo_pt_l[i].pt.y << ", ju: " << stereo_pt_l[j].pt.x << ", jv: " << stereo_pt_l[j].pt.y);
-                repeated = true;
+    // Grab from drawer, not sure if they are the final matched
+    // mpSLAM->mpFrameDrawer->GrabTrackedPoints(stereo_pt_l, stereo_pt_depth, stereo_pt_id);
+    
+    // for(size_t i = 0; i < stereo_pt_id.size(); i++)
+    // {
+    //     bool repeated = false;
+    //     for(size_t j = 0; j < stereo_pt_id.size(); j++)
+    //     {
+    //         if(i != j && stereo_pt_id[i] == stereo_pt_id[j])
+    //         {
+    // //                     ROS_INFO_STREAM("Repeated: " << stereo_pt_id[i] << ", iu: " << stereo_pt_l[i].pt.x << ", iv: " << stereo_pt_l[i].pt.y << ", ju: " << stereo_pt_l[j].pt.x << ", jv: " << stereo_pt_l[j].pt.y);
+    //             repeated = true;
                 
+    //         }
+    //     }
+    //     if(!repeated)
+    //     {
+    //         sparse_stereo_msgs::TrackedPoint tracked_pt;
+    //         tracked_pt.header = msgLeft->header;
+    //         tracked_pt.u_l = stereo_pt_l[i].pt.x;
+    //         tracked_pt.v_l = stereo_pt_l[i].pt.y;
+    //         tracked_pt.depth = stereo_pt_depth[i];
+    //         tracked_pt.id = stereo_pt_id[i];
+            
+    //         ROS_INFO_STREAM(tracked_pt.id);
+    //         tracked_points.tracked_list.push_back(tracked_pt);
+    //     }
+        
+    // }
+    // ROS_INFO_STREAM("Tracked [ " << tracked_points.tracked_list.size() <<" ] features.");
+
+    // Use tracked map points and keypoints
+    std::vector<ORB_SLAM2::MapPoint *> stereo_map_pts = mpSLAM->GetTrackedMapPoints();
+    stereo_pt_l = mpSLAM->GetTrackedKeyPointsUn();
+
+    tracked_points.tracked_list.clear();
+    for(size_t i = 0; i < stereo_map_pts.size(); i++)
+    {
+        ORB_SLAM2::MapPoint* map_pt = stereo_map_pts[i];
+        if(map_pt != NULL)
+        {
+            cv::Mat Pw = map_pt->GetWorldPos(), Pc;
+            if (mpSLAM->mpTracker->mCurrentFrame.WorldToCameraPoint(Pw, Pc) == true) 
+            {
+                sparse_stereo_msgs::TrackedPoint tracked_pt;
+                tracked_pt.header = msgLeft->header;
+
+                tracked_pt.depth = Pc.at<float>(2);
+                tracked_pt.id = map_pt->mnId;
+                tracked_pt.u_l = stereo_pt_l[i].pt.x;
+                tracked_pt.v_l = stereo_pt_l[i].pt.y;
+                
+                tracked_points.tracked_list.push_back(tracked_pt);
             }
         }
-        if(!repeated)
-        {
-            sparse_stereo_msgs::TrackedPoint tracked_pt;
-            tracked_pt.header = msgLeft->header;
-            tracked_pt.u_l = stereo_pt_l[i].pt.x;
-            tracked_pt.v_l = stereo_pt_l[i].pt.y;
-            tracked_pt.depth = stereo_pt_depth[i];
-            tracked_pt.id = stereo_pt_id[i];
-            
-            tracked_points.tracked_list.push_back(tracked_pt);
-        }
-        
     }
+
+    // Debug: check for repeated ids
+    // for(size_t i = 0; i < tracked_points.tracked_list.size(); i++)
+    // {
+    //     bool repeated = false;
+    //     for(size_t j = 0; j < stereo_pt_id.size(); j++)
+    //     {
+    //         if(i != j && stereo_pt_id[i] == stereo_pt_id[j])
+    //         {
+    //             ROS_INFO_STREAM("Repeated: " << stereo_pt_id[i] << ", iu: " << stereo_pt_l[i].pt.x << ", iv: " << stereo_pt_l[i].pt.y << ", ju: " << stereo_pt_l[j].pt.x << ", jv: " << stereo_pt_l[j].pt.y);
+    //             repeated = true;
+                
+    //         }
+    //     }
+    // }
+
     trackedFeaturesPublisher.publish(tracked_points);
 
     ROS_INFO_STREAM("Tracked [ " << tracked_points.tracked_list.size() <<" ] features.");
