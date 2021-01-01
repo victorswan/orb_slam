@@ -400,6 +400,7 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
 
     // Obtain the tracked points
     std::vector<cv::KeyPoint> stereo_pt_l;
+    std::vector<float> var_pt_l;
     std::vector<float> stereo_pt_depth;
     std::vector<long unsigned int> stereo_pt_id;
 
@@ -439,12 +440,13 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
     // Use tracked map points and keypoints
     std::vector<ORB_SLAM2::MapPoint *> stereo_map_pts = mpSLAM->GetTrackedMapPoints();
     stereo_pt_l = mpSLAM->GetTrackedKeyPointsUn();
+    var_pt_l = mpSLAM->mpTracker->mCurrentFrame.mvLevelSigma2;
 
     tracked_points.tracked_list.clear();
     for(size_t i = 0; i < stereo_map_pts.size(); i++)
     {
         ORB_SLAM2::MapPoint* map_pt = stereo_map_pts[i];
-        if(map_pt != NULL)
+        if(map_pt != NULL && !map_pt->isBad())
         {
             cv::Mat Pw = map_pt->GetWorldPos(), Pc;
             if (mpSLAM->mpTracker->mCurrentFrame.WorldToCameraPoint(Pw, Pc) == true) 
@@ -456,6 +458,12 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
                 tracked_pt.id = map_pt->mnId;
                 tracked_pt.u_l = stereo_pt_l[i].pt.x;
                 tracked_pt.v_l = stereo_pt_l[i].pt.y;
+
+                tracked_pt.var = var_pt_l[stereo_pt_l[i].octave];
+
+                tracked_pt.pt_camera.x = Pc.at<float>(0);
+                tracked_pt.pt_camera.y = Pc.at<float>(1);
+                tracked_pt.pt_camera.z = Pc.at<float>(2);
                 
                 tracked_points.tracked_list.push_back(tracked_pt);
             }
