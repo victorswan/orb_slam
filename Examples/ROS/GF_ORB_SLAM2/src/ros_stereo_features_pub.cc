@@ -449,7 +449,7 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
         if(map_pt != NULL && !map_pt->isBad())
         {
             cv::Mat Pw = map_pt->GetWorldPos(), Pc;
-            if (mpSLAM->mpTracker->mCurrentFrame.WorldToCameraPoint(Pw, Pc) == true) 
+            if (mpSLAM->mpTracker->mCurrentFrame.WorldToCameraPoint(Pw, Pc) == true && Pc.at<float>(2) < 100) 
             {
                 sparse_stereo_msgs::TrackedPoint tracked_pt;
                 tracked_pt.header = msgLeft->header;
