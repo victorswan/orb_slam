@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
 project(GF_ORB_SLAM2)
 
+if(POLICY CMP0057)
+cmake_policy(SET CMP0057 NEW)
+endif()
+
 #set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 message("ROS version = " $ENV{ROS_DISTRO})
@@ -114,7 +118,7 @@ find_package(OpenCV 3.4.5 REQUIRED
     
 # customize eigen dir
 # find_package(Eigen3 3.1.0 REQUIRED)
-set( EIGEN3_INCLUDE_DIR /opt/eigen33/include/eigen3/ )
+set( EIGEN3_INCLUDE_DIR /opt/eigen/include/eigen3/ )
 # set( EIGEN3_INCLUDE_DIR /usr/include/eigen3 )
 MESSAGE("EIGEN include dir: " ${EIGEN3_INCLUDE_DIR})
 # MESSAGE("EIGEN libs: " ${EIGEN3_LIBS})

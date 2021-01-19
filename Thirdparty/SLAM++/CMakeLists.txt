@@ -569,7 +569,7 @@ IF(SLAM_P_P_EIGEN33)
       ${ARMADILLO_INCLUDE_DIR}
 	  ${CUDA_INCLUDE_IFENABLED}
 	  ${PROJECT_SOURCE_DIR}/include/
-      /opt/eigen33/include/eigen3/
+      /opt/eigen/include/eigen3/
 #	  ${PROJECT_SOURCE_DIR}/include/eigen33/
 #	  ${PROJECT_SOURCE_DIR}/external/Ceres/include/
 #	  ${PROJECT_SOURCE_DIR}/external/Ceres/internal/

@@ -515,7 +515,8 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(const vector<cv::KeyPoint> 
     for (size_t i = 0; i < vToDistributeKeys.size(); i++)
     {
         const cv::KeyPoint &kp = vToDistributeKeys[i];
-        vpIniNodes[kp.pt.x / hX]->vKeys.push_back(kp);
+        size_t node_id = size_t(kp.pt.x / hX);
+        vpIniNodes[node_id]->vKeys.push_back(kp);
     }
 
     list<ExtractorNode>::iterator lit = lNodes.begin();

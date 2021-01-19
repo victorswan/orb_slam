@@ -57,9 +57,11 @@ find_package(OpenCV 3.4.5 REQUIRED
                  PATHS /opt/opencv
                  NO_DEFAULT_PATH)
 
+find_package(Boost 1.73.0 COMPONENTS system serialization filesystem date_time REQUIRED)
+
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-include_directories(${OpenCV_INCLUDE_DIRS})
+include_directories(${OpenCV_INCLUDE_DIRS} ${Boost_INCLUDE_DIR})
 add_library(${PROJECT_NAME} ${DBOW2_LIB_TYPE} ${SRCS_DBOW2} ${SRCS_DUTILS})
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES})
 

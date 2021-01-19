@@ -85,8 +85,8 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     thread threadRight(&Frame::ExtractORB, this, 1, imRight);
     threadLeft.join();
     threadRight.join();
-    //    ExtractORB(0,imLeft);
-    //    ExtractORB(1,imRight);
+//    ExtractORB(0,imLeft);
+//    ExtractORB(1,imRight);
 
     N = mvKeys.size();
 
@@ -1087,11 +1087,17 @@ void Frame::ComputeStereoMatches()
 
             // sliding window search
             const int w = 5;
+
+            int left_row_range_start = std::min(std::max(0, int(scaledvL - w)), mpORBextractorLeft->mvImagePyramid[kpL.octave].rows - 1);
+            int left_row_range_end = std::min(std::max(0, int(scaledvL + w + 1)), mpORBextractorLeft->mvImagePyramid[kpL.octave].rows - 1);
+            int left_col_range_start = std::min(std::max(0, int(scaleduL - w)), mpORBextractorLeft->mvImagePyramid[kpL.octave].cols - 1);
+            int left_col_range_end = std::min(std::max(0, int(scaleduL + w + 1)), mpORBextractorLeft->mvImagePyramid[kpL.octave].cols - 1);
+
 #ifdef CUDA_ACC_FAST
-            cv::cuda::GpuMat gMat = mpORBextractorLeft->mvImagePyramid[kpL.octave].rowRange(scaledvL - w, scaledvL + w + 1).colRange(scaleduL - w, scaleduL + w + 1);
+            cv::cuda::GpuMat gMat = mpORBextractorLeft->mvImagePyramid[kpL.octave].rowRange(left_row_range_start, left_row_range_end).colRange(left_col_range_start, left_col_range_end);
             cv::Mat IL(gMat.rows, gMat.cols, gMat.type(), gMat.data, gMat.step);
 #else
-            cv::Mat IL = mpORBextractorLeft->mvImagePyramid[kpL.octave].rowRange(scaledvL - w, scaledvL + w + 1).colRange(scaleduL - w, scaleduL + w + 1);
+            cv::Mat IL = mpORBextractorLeft->mvImagePyramid[kpL.octave].rowRange(left_row_range_start, left_row_range_end).colRange(col_range_start, col_range_end);
 #endif
             IL.convertTo(IL, CV_32F);
             IL = IL - IL.at<float>(w, w) * cv::Mat::ones(IL.rows, IL.cols, CV_32F);
@@ -1109,11 +1115,14 @@ void Frame::ComputeStereoMatches()
 
             for (int incR = -L; incR <= +L; incR++)
             {
+                int right_col_range_start = std::min(std::max(0, int(scaleduR0 + incR - w)), mpORBextractorRight->mvImagePyramid[kpL.octave].cols - 1);
+                int right_col_range_end = std::min(std::max(0, int(scaleduR0 + incR + w + 1)), mpORBextractorRight->mvImagePyramid[kpL.octave].cols - 1);
+
 #ifdef CUDA_ACC_FAST
-                cv::cuda::GpuMat gMat = mpORBextractorRight->mvImagePyramid[kpL.octave].rowRange(scaledvL - w, scaledvL + w + 1).colRange(scaleduR0 + incR - w, scaleduR0 + incR + w + 1);
+                cv::cuda::GpuMat gMat = mpORBextractorRight->mvImagePyramid[kpL.octave].rowRange(left_row_range_start, left_row_range_end).colRange(right_col_range_start, right_col_range_end);
                 cv::Mat IR(gMat.rows, gMat.cols, gMat.type(), gMat.data, gMat.step);
 #else
-                cv::Mat IR = mpORBextractorRight->mvImagePyramid[kpL.octave].rowRange(scaledvL - w, scaledvL + w + 1).colRange(scaleduR0 + incR - w, scaleduR0 + incR + w + 1);
+                cv::Mat IR = mpORBextractorRight->mvImagePyramid[kpL.octave].rowRange(left_row_range_start, left_row_range_start).colRange(right_col_range_start, right_col_range_end);
 #endif
                 IR.convertTo(IR, CV_32F);
                 IR = IR - IR.at<float>(w, w) * cv::Mat::ones(IR.rows, IR.cols, CV_32F);
