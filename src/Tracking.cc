@@ -109,7 +109,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary *pVoc, FrameDrawer *pFrameDrawer,
         cout << "- fy: " << fy << endl;
         cout << "- cx: " << cx << endl;
         cout << "- cy: " << cy << endl;
-#ifdef USE_FISHEYE_DISTORTION
+#ifdef USE_FISHEYE_DISTORTIONint cols_output = fSettings["Camera.width"];
         cout << "- k1: " << DistCoef.at<float>(0) << endl;
         cout << "- k2: " << DistCoef.at<float>(1) << endl;
         cout << "- k3: " << DistCoef.at<float>(2) << endl;
@@ -191,14 +191,17 @@ Tracking::Tracking(System *pSys, ORBVocabulary *pVoc, FrameDrawer *pFrameDrawer,
         R_r.copyTo(mR_right);
         P_r.copyTo(mP_right);
 
+        int cols_output = fSettings["Camera.width"];
+        int rows_output = fSettings["Camera.height"];
+
 #ifndef ALTER_STEREO_MATCHING
         //
 #ifdef USE_FISHEYE_DISTORTION
-        cv::fisheye::initUndistortRectifyMap(K_l, D_l, R_l, P_l.rowRange(0, 3).colRange(0, 3), cv::Size(cols_l, rows_l), CV_32F, mMap1_l, mMap2_l);
-        cv::fisheye::initUndistortRectifyMap(K_r, D_r, R_r, P_r.rowRange(0, 3).colRange(0, 3), cv::Size(cols_r, rows_r), CV_32F, mMap1_r, mMap2_r);
+        cv::fisheye::initUndistortRectifyMap(K_l, D_l, R_l, P_l.rowRange(0, 3).colRange(0, 3), cv::Size(cols_output, rows_output), CV_32F, mMap1_l, mMap2_l);
+        cv::fisheye::initUndistortRectifyMap(K_r, D_r, R_r, P_r.rowRange(0, 3).colRange(0, 3), cv::Size(cols_output, rows_output), CV_32F, mMap1_r, mMap2_r);
 #else
-        cv::initUndistortRectifyMap(K_l, D_l, R_l, P_l.rowRange(0, 3).colRange(0, 3), cv::Size(cols_l, rows_l), CV_32F, mMap1_l, mMap2_l);
-        cv::initUndistortRectifyMap(K_r, D_r, R_r, P_r.rowRange(0, 3).colRange(0, 3), cv::Size(cols_r, rows_r), CV_32F, mMap1_r, mMap2_r);
+        cv::initUndistortRectifyMap(K_l, D_l, R_l, P_l.rowRange(0, 3).colRange(0, 3), cv::Size(cols_output, rows_output), CV_32F, mMap1_l, mMap2_l);
+        cv::initUndistortRectifyMap(K_r, D_r, R_r, P_r.rowRange(0, 3).colRange(0, 3), cv::Size(cols_output, rows_output), CV_32F, mMap1_r, mMap2_r);
 #endif
 
 #endif
