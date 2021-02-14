@@ -133,6 +133,7 @@ protected:
 
     long unsigned int mLastLoopKFid;
 
+public:
     // Variables related to Global Bundle Adjustment
     bool mbRunningGBA;
     bool mbFinishedGBA;

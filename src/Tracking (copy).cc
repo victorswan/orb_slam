@@ -943,10 +943,10 @@ void Tracking::Track()
         double timeCost_sofar = timer_all.toc() + logCurrentFrame.time_ORB_extraction,
                 timeCost_rest = time_track_budget * 5 - timeCost_sofar - 0.002;
         // Compute the good feature for local Map
-        std::cout << "========== total time to proc 1 frame = " << time_track_budget * 5
-                  << "; already taken " << timeCost_sofar
-                  << " with ORB time " << logCurrentFrame.time_ORB_extraction
-                  << " ; left " << timeCost_rest << " ==========" << std::endl;
+//        std::cout << "========== total time to proc 1 frame = " << time_track_budget * 5
+//                  << "; already taken " << timeCost_sofar
+//                  << " with ORB time " << logCurrentFrame.time_ORB_extraction
+//                  << " ; left " << timeCost_rest << " ==========" << std::endl;
 #else
         double timeCost_sofar = timer_all.toc() + logCurrentFrame.time_ORB_extraction,
                 timeCost_rest = time_track_budget - timeCost_sofar - 0.002;

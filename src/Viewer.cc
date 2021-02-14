@@ -81,6 +81,7 @@ void Viewer::Run()
     pangolin::Var<bool> menuShowGraph("menu.Show Graph", true, true);
     pangolin::Var<bool> menuLocalizationMode("menu.Localization Mode", bLocalizationMode, true);
     pangolin::Var<bool> menuReset("menu.Reset", false, false);
+    pangolin::Var<bool> menuSaveMap("menu.Save Map", false, false);
 
     // Define Camera Render Object (for view / scene browsing)
     pangolin::OpenGlRenderState s_cam(
@@ -156,6 +157,16 @@ void Viewer::Run()
             menuFollowCamera = true;
             mpSystem->Reset();
             menuReset = false;
+        }
+
+        if (menuSaveMap)
+        {
+            if(mpSystem->save_map)
+            {
+                cout << "Save Map" << endl;
+                mpSystem->archiveMap(mpSystem->map_path, mpSystem->map_filename);
+            }
+            menuSaveMap = false;
         }
 
         if (Stop())

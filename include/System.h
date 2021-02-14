@@ -216,7 +216,7 @@ public:
 
     unsigned long max_KF_Id, max_Pt_Id;
 
-protected:
+public:
     void archiveMap(std::string map_path, std::string map_filename) const;
     void dearchiveMap(std::string map_path, std::string map_filename);
 };

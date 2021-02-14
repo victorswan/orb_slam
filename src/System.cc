@@ -399,8 +399,9 @@ void System::Shutdown()
     if (mpViewer)
     {
         mpViewer->RequestFinish();
-        while (!mpViewer->isFinished())
-            usleep(5000);
+        mptViewer->join();
+//        while (!mpViewer->isFinished())
+//            usleep(5000);
 
         //        // This code is from jkwkch, from
         //        //   https://github.com/raulmur/ORB_SLAM2/issues/547
@@ -410,10 +411,14 @@ void System::Shutdown()
     //    cout << "At the stage 1 of system Shutdown!" << endl;
 
     // Wait until all thread have effectively stopped
-    while (!mpLocalMapper->isFinished() || !mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
-    {
-        usleep(5000);
-    }
+
+    mptLocalMapping->join();
+    mptLoopClosing->join();
+    mpLoopCloser->mpThreadGBA->join();
+//    while (!mpLocalMapper->isFinished() || !mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
+//    {
+//        usleep(5000);
+//    }
     //    cout << "At the stage 2 of system Shutdown!" << endl;
 
     // NOTE
@@ -423,10 +428,13 @@ void System::Shutdown()
     //        pangolin::BindToContext("ORB-SLAM2: Map Viewer");
 
     //Load Map
-    if(this->save_map)
-    {
-        this->archiveMap(this->map_path, this->map_filename);
-    }
+//    std::cout << "debug Shutdown" << __LINE__ << std::endl;
+//    if(this->save_map)
+//    {
+//        cout << "Save Map" << endl;
+//        this->archiveMap(this->map_path, this->map_filename);
+//    }
+//    std::cout << "debug Shutdown" << __LINE__ << std::endl;
 
     cout << "At the end of system Shutdown!" << endl;
 }
@@ -1530,6 +1538,8 @@ void System::SaveMap(std::string &map_path)
 
 void System::archiveMap(std::string map_path, std::string map_filename) const
 {
+    std::cout << "debug archiveMap" << __LINE__ << std::endl;
+
     auto vpKFs = mpMap->GetAllKeyFrames();
     auto vpMPs = mpMap->GetAllMapPoints();
     auto vpRMPs = mpMap->GetReferenceMapPoints();
@@ -1543,12 +1553,16 @@ void System::archiveMap(std::string map_path, std::string map_filename) const
     std::ofstream ofs(map_file, ios::binary);
     boost::archive::binary_oarchive oa(ofs);
 
+    std::cout << "debug archiveMap" << __LINE__ << std::endl;
+
     size_t keyframe_size = vpKFs.size();
     oa << keyframe_size;
     for (size_t i = 0; i < keyframe_size; i++)
     {
         oa << *(vpKFs[i]);
     }
+
+    std::cout << "debug archiveMap" << __LINE__ << std::endl;
 
     size_t mappoint_size = vpMPs.size();
     oa << mappoint_size;
@@ -1557,15 +1571,21 @@ void System::archiveMap(std::string map_path, std::string map_filename) const
         oa << *(vpMPs[i]);
     }
 
+    std::cout << "debug archiveMap" << __LINE__ << std::endl;
+
     for (size_t i = 0; i < keyframe_size; i++)
     {
         vpKFs[i]->saveExtern(oa);
     }
 
+    std::cout << "debug archiveMap" << __LINE__ << std::endl;
+
     for (size_t i = 0; i < mappoint_size; i++)
     {
         vpMPs[i]->saveExtern(oa);
     }
+
+    std::cout << "debug archiveMap" << __LINE__ << std::endl;
 
     size_t ref_mappoint_size = vpRMPs.size();
     oa << ref_mappoint_size;
@@ -1573,6 +1593,8 @@ void System::archiveMap(std::string map_path, std::string map_filename) const
     {
         oa << vpRMPs[i]->mnId;
     }
+
+    std::cout << "debug archiveMap" << __LINE__ << std::endl;
 }
 
 void System::dearchiveMap(std::string map_path, std::string map_filename)
