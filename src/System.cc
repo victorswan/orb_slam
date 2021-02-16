@@ -1714,7 +1714,7 @@ void System::dearchiveMap(std::string map_path, std::string map_filename)
             Frame::nNextId = max_KF_Id + 1;
             MapPoint::nNextId = max_Pt_Id + 1;
 
-            DeactivateLocalizationMode();
+//            DeactivateLocalizationMode();
             ForceRelocTracker();
         }
 
