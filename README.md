@@ -1,3 +1,15 @@
+# Ubuntu 20.04 + ROS noetic (WIP)
+@Yanwei
+- Compiled Successfully with OpenCV 4.x
+```bash
+./build_dep_ubuntu20.04.sh
+./build_supports.sh
+# Converting vocabulary to binary
+./tools/bin_vocabulary
+```
+- Still tuning for performance
+
+---
 ![](https://github.com/ivalab/demo_gif/blob/master/office_slam_demo.gif)
 
 # A cost-efficient, heavily-modified ORB-SLAM2 (tested on Ubuntu 16.04 + ROS Kinetic)

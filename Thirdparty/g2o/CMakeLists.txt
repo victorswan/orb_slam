@@ -81,7 +81,11 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${g2o_C_FLAGS}")
 
 # Find Eigen3
 # SET( G2O_EIGEN3_INCLUDE /usr/include/eigen3 )
-SET( G2O_EIGEN3_INCLUDE /opt/eigen33/include/eigen3/ )
+# SET( G2O_EIGEN3_INCLUDE /opt/eigen33/include/eigen3/ )
+if (NOT DEFINED ENV{GF_ORB_SLAM2_ROOT})
+  message(FATAL_ERROR "env variable: GF_ORB_SLAM2_ROOT is NOT defined, please source export_env_variables.bash")
+endif()
+SET( G2O_EIGEN3_INCLUDE $ENV{GF_ORB_SLAM2_ROOT}/eigen33/include/eigen3/ )
 SET(EIGEN3_INCLUDE_DIR ${G2O_EIGEN3_INCLUDE})
 FIND_PACKAGE(Eigen3 3.3.0 REQUIRED)
 IF(EIGEN3_FOUND)

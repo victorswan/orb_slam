@@ -13,7 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
     tf2_ros
     geometry_msgs
     # for closed-loop evaluation of Good Graph only
-    trajectory_state_predictor
+    # trajectory_state_predictor
 )
 
 message("ROS version = " $ENV{ROS_DISTRO})
@@ -109,6 +109,11 @@ ENDIF(SLAM_P_P_LINEAR_SOLVER_TYPE)
 
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
 
+# check environment first 
+if (NOT DEFINED ENV{GF_ORB_SLAM2_ROOT})
+    message(FATAL_ERROR "env variable: GF_ORB_SLAM2_ROOT is NOT defined, please source export_env_variables.bash")
+endif()
+
 # customize opencv dir
 if ($ENV{ROS_DISTRO} STREQUAL "indigo")
      set( OpenCV_DIR /opt/opencv2/share/OpenCV )
@@ -118,13 +123,16 @@ elseif ($ENV{ROS_DISTRO} STREQUAL "kinetic")
      find_package(OpenCV 3.4.1 REQUIRED
                 PATHS /opt/opencv3
                 NO_DEFAULT_PATH)
+elseif ($ENV{ROS_DISTRO} STREQUAL "noetic")
+     find_package(OpenCV 4 REQUIRED)
 endif()
 MESSAGE("OpenCV include dir: " ${OpenCV_INCLUDE_DIRS})
 MESSAGE("OpenCV libs: " ${OpenCV_LIBS})
 
 # customize eigen dir
 # find_package(Eigen3 3.1.0 REQUIRED)
-set( EIGEN3_INCLUDE_DIR /opt/eigen33/include/eigen3/ )
+# set( EIGEN3_INCLUDE_DIR /opt/eigen33/include/eigen3/ )
+set( EIGEN3_INCLUDE_DIR $ENV{GF_ORB_SLAM2_ROOT}/eigen33/include/eigen3/ )
 # set( EIGEN3_INCLUDE_DIR /usr/include/eigen3 )
 MESSAGE("EIGEN include dir: " ${EIGEN3_INCLUDE_DIR})
 # MESSAGE("EIGEN libs: " ${EIGEN3_LIBS})
@@ -132,18 +140,23 @@ MESSAGE("EIGEN include dir: " ${EIGEN3_INCLUDE_DIR})
 # customize pangolin dir
 # set(Pangolin_DIR /opt/Pangolin/lib/cmake/Pangolin/)
 # find_package(Pangolin REQUIRED)
-set(Pangolin_INCLUDE_DIRS /opt/Pangolin/include/)
-set(Pangolin_LIBRARIES /opt/Pangolin/lib/libpangolin.so)
+# set(Pangolin_INCLUDE_DIRS /opt/Pangolin/include/)
+# set(Pangolin_LIBRARIES /opt/Pangolin/lib/libpangolin.so)
+set(Pangolin_INCLUDE_DIRS $ENV{GF_ORB_SLAM2_ROOT}/Pangolin/include/)
+set(Pangolin_LIBRARIES    $ENV{GF_ORB_SLAM2_ROOT}/Pangolin/lib/libpangolin.so)
 MESSAGE("Pangolin include dir: " ${Pangolin_INCLUDE_DIRS})
 
 
 # customize openblas dir
-set(OpenBLAS_LIBRARIES /opt/OpenBLAS/lib/libopenblas.so)
+# set(OpenBLAS_LIBRARIES /opt/OpenBLAS/lib/libopenblas.so)
+set(OpenBLAS_LIBRARIES $ENV{GF_ORB_SLAM2_ROOT}/OpenBLAS/lib/libopenblas.so)
 MESSAGE("OpenBLAS libs:" ${OpenBLAS_LIBRARIES})
 
 # customize armadillo dir
-set(ARMADILLO_INCLUDE_DIR /opt/armadillo/include)
-set(ARMADILLO_LIBRARIES /opt/armadillo/lib/libarmadillo.so)
+# set(ARMADILLO_INCLUDE_DIR /opt/armadillo/include)
+# set(ARMADILLO_LIBRARIES /opt/armadillo/lib/libarmadillo.so)
+set(ARMADILLO_INCLUDE_DIR $ENV{GF_ORB_SLAM2_ROOT}/armadillo/include)
+set(ARMADILLO_LIBRARIES   $ENV{GF_ORB_SLAM2_ROOT}/armadillo/lib/libarmadillo.so)
 MESSAGE("ARMADILLO libs: " ${ARMADILLO_LIBRARIES})
 
 # customize gtest dir
@@ -161,7 +174,9 @@ else (CCACHE_FOUND)
 endif(CCACHE_FOUND)
 
 # GFlags
-find_package(GFlags REQUIRED)
+set(GFLAGS_INCLUDE_DIR /home/yanwei/slam_ws/output/3rdparty/include)
+set(GFLAGS_LIBRARIES /home/yanwei/slam_ws/output/3rdparty/lib/libgflags.a)
+# find_package(GFlags REQUIRED)
 MESSAGE("gflags include dirs: " ${GFLAGS_INCLUDE_DIR})
 
 find_package(Boost    REQUIRED COMPONENTS thread system filesystem)
@@ -288,6 +303,7 @@ else()
         GL
         glut
         GLU
+        GLEW
         ${GFLAGS_LIBRARIES}
         ${OpenCV_LIBS}
         # ${EIGEN3_LIBS}

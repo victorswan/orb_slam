@@ -31,6 +31,7 @@
 #include "ORBextractor.h"
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs/legacy/constants_c.h>
 
 // NOTE
 // as an alternative of stereo pipeline, undistort the keypoints and perform stereo matching
