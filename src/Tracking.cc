@@ -383,9 +383,11 @@ Tracking::~Tracking() {
 
 void Tracking::SetRealTimeFileStream(string fNameRealTimeTrack)
 {
+    const std::size_t found = fNameRealTimeTrack.find_last_of(".");
+    f_realTimeTrack_name_ = fNameRealTimeTrack.substr(0, found);
     f_realTimeTrack.open(fNameRealTimeTrack.c_str());
     f_realTimeTrack << fixed;
-    f_realTimeTrack << "#TimeStamp Tx Ty Tz Qx Qy Qz Qw" << std::endl;
+    // f_realTimeTrack << "#TimeStamp Tx Ty Tz Qx Qy Qz Qw" << std::endl;
 }
 
 void Tracking::updateORBExtractor() {
@@ -1018,6 +1020,12 @@ void Tracking::Track()
             {
                 cout << "Track lost soon after initialisation, reseting..." << endl;
                 mpSystem->Reset();
+                {
+                    f_realTimeTrack.close();
+                    reset_count_ += 1;
+                    f_realTimeTrack.open(f_realTimeTrack_name_ + "_" + std::to_string(reset_count_) + ".txt");
+                    f_realTimeTrack << fixed;
+                }
                 return;
             }
         }
@@ -1317,7 +1325,6 @@ void Tracking::Track()
 
     // push the time log of current frame into the vector
     mFrameTimeLog.push_back(logCurrentFrame);
-    //    cout << "Done with tracking!" << endl;
 
     std::cout << "Time cost break down: " << std::endl
               << "ORB extraction " << logCurrentFrame.time_ORB_extraction << "; "

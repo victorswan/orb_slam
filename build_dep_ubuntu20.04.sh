@@ -53,13 +53,20 @@ cmake .. -DCMAKE_INSTALL_PREFIX:PATH="${GF_ORB_SLAM2_ROOT}/Pangolin" -DCMAKE_BUI
 make -j4
 make install
 
-# build gtest
-cd /usr/src/gtest/
-sudo mkdir build
-cd build
-sudo cmake ..
-sudo make -j4
-sudo cp lib/libgtest.a ../
+# install google test
+cd ${GF_ORB_SLAM2_SDK}
+git clone https://github.com/google/googletest.git
+cd googletest
+# version
+mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX:PATH="${GF_ORB_SLAM2_ROOT}/gtest" -DCMAKE_BUILD_TYPE:STRING="Release" ..
+make -j8 && make install
 
-# last, install gflags
-sudo apt install libgflags-dev
+# install gflags
+cd ${GF_ORB_SLAM2_SDK}
+git clone https://github.com/gflags/gflags.git
+cd gflags
+git checkout v2.2.2
+mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX:PATH="${GF_ORB_SLAM2_ROOT}/gflags" -DCMAKE_BUILD_TYPE:STRING="Release" ..
+make -j8 && make install

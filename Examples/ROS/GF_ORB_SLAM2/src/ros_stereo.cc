@@ -122,7 +122,8 @@ int main(int argc, char **argv)
 #endif
 
 #ifdef REALTIME_TRAJ_LOGGING
-    std::string fNameRealTimeTrack = std::string(argv[8]) + "_AllFrameTrajectory.txt";
+    // std::string fNameRealTimeTrack = std::string(argv[8]) + "_AllFrameTrajectory.txt";
+    std::string fNameRealTimeTrack = std::string(argv[8]) + "_CameraTrajectory_tracking.txt";
     std::cout << std::endl << "Saving AllFrame Trajectory to AllFrameTrajectory.txt" << std::endl;
     SLAM.SetRealTimeFileStream(fNameRealTimeTrack);
 #endif

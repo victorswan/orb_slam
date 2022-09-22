@@ -80,7 +80,7 @@ using namespace Eigen;
 // with random error.  It is then utilized as pose prediction (replacement 
 // of constant motion model) in tracking thread.
 //
-#define PRED_WITH_ODOM
+// #define PRED_WITH_ODOM
 
 /* --- options of anticipating poses with closed-loop planner  --- */
 //
@@ -554,6 +554,8 @@ protected:
     //    int budget_matching_in_track = 150; // 60; // 100; //
 
     std::ofstream f_realTimeTrack;
+    std::string f_realTimeTrack_name_ = "";
+    int reset_count_ = 0;
     
     //
 #ifdef INIT_WITH_ARUCHO 
